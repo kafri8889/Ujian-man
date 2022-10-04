@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/menu_text_selection_translate"
+        android:title="Terjemahin"
+        android:icon="@drawable/ic_translate"/>
+
+</menu>
