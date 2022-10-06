@@ -1,9 +1,12 @@
 package com.daniellemarsh.ujianbro.ui.home
 
 import android.annotation.SuppressLint
+import android.view.MotionEvent
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.animateFloatAsState
@@ -12,6 +15,10 @@ import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -21,13 +28,17 @@ import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -37,14 +48,17 @@ import androidx.core.view.WindowInsetsControllerCompat
 import com.daniellemarsh.ujianbro.MainActivity
 import com.daniellemarsh.ujianbro.R
 import com.daniellemarsh.ujianbro.common.DelayManager
+import com.daniellemarsh.ujianbro.extension.fraction
 import com.daniellemarsh.ujianbro.extension.toast
+import com.daniellemarsh.ujianbro.utils.Utils.screenSize
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import timber.log.Timber
 import java.net.URL
 
-@OptIn(ExperimentalAnimationApi::class)
-@SuppressLint("SetJavaScriptEnabled")
+@OptIn(ExperimentalAnimationApi::class, ExperimentalComposeUiApi::class)
+@SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
 fun HomeScreen(
 	viewModel: HomeViewModel
@@ -55,7 +69,10 @@ fun HomeScreen(
 	val scope = rememberCoroutineScope()
 	val systemUiController = rememberSystemUiController()
 	
-	val delayManager = remember { DelayManager() }
+	val (
+		screenWidth,
+		screenHeight
+	) = remember { (context as MainActivity).screenSize() }
 	
 	val requestedUrl by viewModel.requestedUrl.collectAsState()
 	
@@ -73,10 +90,56 @@ fun HomeScreen(
 		systemUiController.isNavigationBarVisible = false
 	}
 	
+	BackHandler {
+		viewModel.alert()
+	}
+	
 	Box(
 		modifier = Modifier
 			.fillMaxSize()
 	) {
+		AndroidView(
+			factory = { ctx ->
+				View(ctx).apply {
+					layoutParams = ViewGroup.LayoutParams(
+						ViewGroup.LayoutParams.MATCH_PARENT,
+						ViewGroup.LayoutParams.MATCH_PARENT
+					)
+					
+					setOnTouchListener { v, event ->
+						Timber.i("coor: ${event.x}, ${event.y}")
+						
+						val x = event.x
+						val y = event.y
+						
+						// width = 1075
+						// min left with fraction 0.9 = 967.5
+						// min right with fraction 0.9 = 107.5
+						val minLeft = screenWidth.fraction(0.96f)
+						val minRight = screenWidth - minLeft
+						
+						val minBottom = screenHeight.fraction(0.96f)
+						val minTop = screenHeight - minBottom
+						
+						if (x < minRight || x > minLeft) {
+							viewModel.alert()
+							Timber.i("Trigger alert from gesture!")
+						}
+						
+						if (y < minTop || y > minBottom) {
+							viewModel.alert()
+							Timber.i("Trigger alert from gesture!")
+						}
+						
+						true
+					}
+				}
+			},
+			modifier = Modifier
+				.fillMaxSize()
+				.zIndex(1f)
+		)
+		
 		Column(
 			horizontalAlignment = Alignment.End,
 			modifier = Modifier
@@ -156,7 +219,7 @@ fun HomeScreen(
 				) {
 					FloatingActionButton(
 						onClick = {
-							(context as MainActivity).finishAffinity()
+							viewModel.exit()
 						}
 					) {
 						Icon(

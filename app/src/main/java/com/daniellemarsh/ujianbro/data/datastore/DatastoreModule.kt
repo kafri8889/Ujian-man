@@ -1,4 +1,4 @@
-package com.daniellemarsh.ujianbro.common.datastore
+package com.daniellemarsh.ujianbro.data.datastore
 
 import android.content.Context
 import dagger.Module

@@ -3,7 +3,7 @@ package com.daniellemarsh.ujianbro.ui.home
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.daniellemarsh.ujianbro.common.datastore.AppDatastore
+import com.daniellemarsh.ujianbro.data.datastore.AppDatastore
 import com.daniellemarsh.ujianbro.extension.toast
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -28,7 +28,7 @@ class HomeViewModel @Inject constructor(
 	init {
 		viewModelScope.launch(Dispatchers.IO) {
 			val reqUrl = URL("https://kafri8889.github.io/exambroweburl.txt").readText()
-			reqUrl.toast(ctx)
+			
 			_requestedUrl.emit(reqUrl)
 		}
 	}
@@ -41,6 +41,10 @@ class HomeViewModel @Inject constructor(
 		viewModelScope.launch {
 			_requestedUrl.emit(s)
 		}
+	}
+	
+	fun exit() {
+		listener?.exit()
 	}
 	
 	fun alert() {
