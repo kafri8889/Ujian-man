@@ -157,9 +157,6 @@ fun HomeScreen(
 				) {
 					Button(
 						shape = MaterialTheme.shapes.small,
-						colors = ButtonDefaults.buttonColors(
-							containerColor = Color(0xFF07c9ae)
-						),
 						onClick = {
 							buttonRefreshVisible = false
 						}
@@ -175,13 +172,13 @@ fun HomeScreen(
 				) {
 					FloatingActionButton(
 						onClick = {
-						
+							viewModel.refresh()
+							isFabExpanded = false
 						}
 					) {
 						Icon(
 							painter = painterResource(id = R.drawable.ic_autorenew),
 							contentDescription = null,
-							tint = Color.White,
 							modifier = Modifier
 								.size(24.dp)
 						)
@@ -201,9 +198,6 @@ fun HomeScreen(
 				) {
 					Button(
 						shape = MaterialTheme.shapes.small,
-						colors = ButtonDefaults.buttonColors(
-							containerColor = Color(0xFF07c9ae)
-						),
 						onClick = {
 							buttonExitVisible = false
 						}
@@ -224,8 +218,7 @@ fun HomeScreen(
 					) {
 						Icon(
 							imageVector = Icons.Rounded.Close,
-							contentDescription = null,
-							tint = Color.White
+							contentDescription = null
 						)
 					}
 				}
@@ -239,6 +232,7 @@ fun HomeScreen(
 					
 					if (!isFabExpanded) {
 						buttonExitVisible = true
+						buttonRefreshVisible = true
 					}
 					
 					when {
@@ -252,7 +246,6 @@ fun HomeScreen(
 				Icon(
 					imageVector = if (isFabExpanded) Icons.Rounded.Home else Icons.Rounded.Add,
 					contentDescription = null,
-					tint = Color.White,
 					modifier = Modifier
 						.rotate(iconRotationDegree)
 				)
@@ -320,6 +313,7 @@ fun HomeScreen(
 							it.loadUrl(requestedUrl)
 						},
 						modifier = Modifier
+							.fillMaxWidth()
 							.weight(1f)
 					)
 					

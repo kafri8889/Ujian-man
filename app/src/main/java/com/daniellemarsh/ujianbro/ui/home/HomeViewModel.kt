@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.net.URL
+import java.util.concurrent.Executors
 import javax.inject.Inject
 import kotlin.random.Random
 
@@ -25,9 +26,15 @@ class HomeViewModel @Inject constructor(
 	private val _requestedUrl = MutableStateFlow("")
 	val requestedUrl: StateFlow<String> = _requestedUrl
 	
+	private var eLearningUrl = ""
+	
 	init {
 		viewModelScope.launch(Dispatchers.IO) {
 			val reqUrl = URL("https://kafri8889.github.io/exambroweburl.txt").readText()
+			
+			if (reqUrl.isNotBlank()) {
+				eLearningUrl = reqUrl
+			}
 			
 			_requestedUrl.emit(reqUrl)
 		}
@@ -40,6 +47,15 @@ class HomeViewModel @Inject constructor(
 	fun setRequestedUrl(s: String) {
 		viewModelScope.launch {
 			_requestedUrl.emit(s)
+		}
+	}
+	
+	fun refresh() {
+		viewModelScope.launch {
+			if (eLearningUrl.isNotBlank()) {
+				_requestedUrl.emit("")
+				_requestedUrl.emit(eLearningUrl)
+			}
 		}
 	}
 	
