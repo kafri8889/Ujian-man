@@ -15,6 +15,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
+import java.net.ConnectException
 import java.net.URL
 import java.util.concurrent.Executors
 import javax.inject.Inject
@@ -27,6 +28,9 @@ class HomeViewModel @Inject constructor(
 ): ViewModel() {
 	
 	private var listener: HomeListener? = null
+	
+	private val _effect = MutableStateFlow<HomeEffect?>(null)
+	val effect: StateFlow<HomeEffect?> = _effect
 	
 	private val _requestedUrl = MutableStateFlow("")
 	val requestedUrl: StateFlow<String> = _requestedUrl
@@ -43,7 +47,17 @@ class HomeViewModel @Inject constructor(
 				_isNetworkHaveInternet.emit(available)
 				
 				if (available) {
-					val reqUrl = URL("https://kafri8889.github.io/exambroweburl.txt").readText()
+					val reqUrl = try {
+						URL("https://kafri8889.github.io/exambroweburl.txt").readText()
+					} catch (e: ConnectException) {
+						_effect.emit(
+							HomeEffect.NetworkException("Terjadi kesalahan pada internet")
+						); ""
+					} catch (e: Exception) {
+						_effect.emit(
+							HomeEffect.NetworkException(e.message ?: "Terjadi kesalahan")
+						); ""
+					}
 
 					_requestedUrl.emit(reqUrl)
 					_reloadWebView.emit(true)
@@ -65,6 +79,12 @@ class HomeViewModel @Inject constructor(
 	fun setReloadWebView(reload: Boolean) {
 		viewModelScope.launch(Dispatchers.IO) {
 			_reloadWebView.emit(reload)
+		}
+	}
+	
+	fun resetEffect() {
+		viewModelScope.launch {
+			_effect.emit(null)
 		}
 	}
 	

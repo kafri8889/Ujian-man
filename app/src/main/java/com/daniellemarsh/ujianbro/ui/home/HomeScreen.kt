@@ -48,6 +48,7 @@ import com.daniellemarsh.ujianbro.R
 import com.daniellemarsh.ujianbro.common.DelayManager
 import com.daniellemarsh.ujianbro.extension.fraction
 import com.daniellemarsh.ujianbro.extension.toast
+import com.daniellemarsh.ujianbro.uicomponent.GestureDetector
 import com.daniellemarsh.ujianbro.uicomponent.LoadingDialog
 import com.daniellemarsh.ujianbro.utils.Utils.screenSize
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
@@ -56,7 +57,6 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.net.URL
 
-@OptIn(ExperimentalAnimationApi::class, ExperimentalComposeUiApi::class)
 @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
 fun HomeScreen(
@@ -68,28 +68,27 @@ fun HomeScreen(
 	val scope = rememberCoroutineScope()
 	val systemUiController = rememberSystemUiController()
 	
-	val (
-		screenWidth,
-		screenHeight
-	) = remember { (context as MainActivity).screenSize() }
-	
 	val requestedUrl by viewModel.requestedUrl.collectAsState()
 	val reloadWebView by viewModel.reloadWebView.collectAsState()
 	val isNetworkHaveInternet by viewModel.isNetworkHaveInternet.collectAsState()
 	
-	var isFabExpanded by remember { mutableStateOf(false) }
 	var isWebViewLoaded by remember { mutableStateOf(false) }
-	var buttonExitVisible by remember { mutableStateOf(true) }
-	var buttonRefreshVisible by remember { mutableStateOf(true) }
 	
-	val iconRotationDegree by animateFloatAsState(
-		targetValue = if (isFabExpanded) 360f else 0f,
-		animationSpec = tween(200)
-	)
-
 	SideEffect {
 		systemUiController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_SWIPE
 		systemUiController.isNavigationBarVisible = false
+	}
+	
+	LaunchedEffect(viewModel) {
+		viewModel.effect.collect { effect ->
+			when (effect) {
+				is HomeEffect.NetworkException -> {
+					effect.message.toast(context)
+					viewModel.resetEffect()
+				}
+				else -> {}
+			}
+		}
 	}
 	
 	BackHandler {
@@ -114,288 +113,306 @@ fun HomeScreen(
 			LoadingDialog(isPlaying = !isWebViewLoaded or !isNetworkHaveInternet)
 		}
 		
-		AndroidView(
-			factory = { ctx ->
-				View(ctx).apply {
-					layoutParams = ViewGroup.LayoutParams(
-						ViewGroup.LayoutParams.MATCH_PARENT,
-						ViewGroup.LayoutParams.MATCH_PARENT
-					)
-					
-					setOnTouchListener { _, event ->
-						Timber.i("coor: ${event.x}, ${event.y}")
-						
-						val x = event.x
-						val y = event.y
-						
-						// width = 1075
-						// min left with fraction 0.9 = 967.5
-						// min right with fraction 0.9 = 107.5
-						val minLeft = screenWidth.fraction(0.96f)
-						val minRight = screenWidth - minLeft
-						
-						val minBottom = screenHeight.fraction(0.96f)
-						val minTop = screenHeight - minBottom
-						
-						if (x < minRight || x > minLeft) {
-							viewModel.alert()
-							Timber.i("Trigger alert from gesture!")
-						}
-						
-						if (y < minTop || y > minBottom) {
-							viewModel.alert()
-							Timber.i("Trigger alert from gesture!")
-						}
-						
-						true
-					}
-				}
+		GestureDetector(
+			onAlert = {
+				viewModel.alert()
 			},
 			modifier = Modifier
 				.fillMaxSize()
 		)
 		
-		Column(
-			horizontalAlignment = Alignment.End,
+		ActionButtons(
+			onRefresh = {
+				viewModel.setReloadWebView(true)
+			},
+			onExit = {
+				viewModel.exit()
+			},
 			modifier = Modifier
 				.padding(16.dp)
 				.zIndex(1f)
 				.align(Alignment.BottomEnd)
-		) {
-			Row {
-				AnimatedVisibility(
-					visible = buttonRefreshVisible and isFabExpanded,
-					enter = scaleIn(tween(200)),
-					exit = scaleOut(tween(200)),
-					modifier = Modifier
-						.padding(end = 16.dp)
-				) {
-					Button(
-						shape = MaterialTheme.shapes.small,
-						onClick = {
-							buttonRefreshVisible = false
-						}
-					) {
-						Text("REFRESH")
-					}
-				}
-				
-				AnimatedVisibility(
-					visible = isFabExpanded,
-					enter = scaleIn(tween(200)),
-					exit = scaleOut(tween(200))
-				) {
-					FloatingActionButton(
-						onClick = {
-							viewModel.setReloadWebView(true)
-							isFabExpanded = false
-						}
-					) {
-						Icon(
-							painter = painterResource(id = R.drawable.ic_autorenew),
-							contentDescription = null,
-							modifier = Modifier
-								.size(24.dp)
-						)
-					}
-				}
-			}
-			
-			Spacer(modifier = Modifier.height(16.dp))
-			
-			Row {
-				AnimatedVisibility(
-					visible = buttonExitVisible and isFabExpanded,
-					enter = scaleIn(tween(200)),
-					exit = scaleOut(tween(200)),
-					modifier = Modifier
-						.padding(end = 16.dp)
-				) {
-					Button(
-						shape = MaterialTheme.shapes.small,
-						onClick = {
-							buttonExitVisible = false
-						}
-					) {
-						Text("EXIT")
-					}
-				}
-				
-				AnimatedVisibility(
-					visible = isFabExpanded,
-					enter = scaleIn(tween(200)),
-					exit = scaleOut(tween(200))
-				) {
-					FloatingActionButton(
-						onClick = {
-							viewModel.exit()
-						}
-					) {
-						Icon(
-							imageVector = Icons.Rounded.Close,
-							contentDescription = null
-						)
-					}
-				}
-			}
-			
-			Spacer(modifier = Modifier.height(16.dp))
-			
-			FloatingActionButton(
-				onClick = {
-					isFabExpanded = !isFabExpanded
-					
-					if (!isFabExpanded) {
-						buttonExitVisible = true
-						buttonRefreshVisible = true
-					}
-					
-					when {
-						systemUiController.isNavigationBarVisible or systemUiController.isStatusBarVisible -> {
-							systemUiController.isNavigationBarVisible = false
-							systemUiController.isStatusBarVisible = false
-						}
-					}
-				}
-			) {
-				Icon(
-					imageVector = if (isFabExpanded) Icons.Rounded.Home else Icons.Rounded.Add,
-					contentDescription = null,
-					modifier = Modifier
-						.rotate(iconRotationDegree)
-				)
-			}
-		}
+		)
 		
-		Column(
+		WebScreen(
+			requestedUrl = requestedUrl,
+			reloadWebView = reloadWebView,
+			onReloadWebView = { reload ->
+				viewModel.setReloadWebView(reload)
+			},
+			onWebViewLoadedChange = { isLoaded ->
+				isWebViewLoaded = isLoaded
+			},
 			modifier = Modifier
 				.fillMaxSize()
+		)
+	}
+
+}
+
+@SuppressLint("SetJavaScriptEnabled")
+@Composable
+fun WebScreen(
+	requestedUrl: String,
+	reloadWebView: Boolean,
+	modifier: Modifier = Modifier,
+	onReloadWebView: (reload: Boolean) -> Unit,
+	onWebViewLoadedChange: (isLoaded: Boolean) -> Unit
+) {
+	
+	Column(
+		modifier = modifier
+	) {
+		Row(
+			modifier = Modifier
+				.weight(1f)
+				.fillMaxWidth()
 		) {
-			Row(
+			Box(
+				modifier = Modifier
+					.padding(4.dp)
+					.width(4.dp)
+					.fillMaxHeight()
+					.clip(CircleShape)
+					.background(Color(0xFF8fd0f8))
+			)
+			
+			Column(
 				modifier = Modifier
 					.weight(1f)
-					.fillMaxWidth()
+					.fillMaxHeight()
 			) {
 				Box(
 					modifier = Modifier
 						.padding(4.dp)
-						.width(4.dp)
-						.fillMaxHeight()
+						.height(4.dp)
+						.fillMaxWidth()
 						.clip(CircleShape)
-						.background(Color(0xFF8fd0f8))
+						.background(Color.White)
+						.shadow(0.5.dp)
 				)
 				
-				Column(
-					modifier = Modifier
-						.weight(1f)
-						.fillMaxHeight()
-				) {
-					Box(
-						modifier = Modifier
-							.padding(4.dp)
-							.height(4.dp)
-							.fillMaxWidth()
-							.clip(CircleShape)
-							.background(Color.White)
-							.shadow(0.5.dp)
-					)
-					
-					AndroidView(
-						factory = { context ->
-							WebView(context).apply {
-								layoutParams = ViewGroup.LayoutParams(
-									ViewGroup.LayoutParams.MATCH_PARENT,
-									ViewGroup.LayoutParams.MATCH_PARENT
-								)
-								
-								webViewClient = object : WebViewClient() {
-									override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-										isWebViewLoaded = false
-									}
-									
-									override fun onPageFinished(view: WebView?, url: String?) {
-										if (view?.progress == 100) {
-											isWebViewLoaded = true
-										}
-									}
-								}
-								
-								webChromeClient = object : WebChromeClient() {}
-								
-								settings.apply {
-									userAgentString =
-										"Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"
-									useWideViewPort = true
-									javaScriptEnabled = true
-									builtInZoomControls = true
-									displayZoomControls = false
-									loadWithOverviewMode = true
-									
-									setSupportZoom(true)
-								}
-								
-								loadUrl(requestedUrl)
-							}
-						},
-						update = {
-							if (reloadWebView) {
-								it.loadUrl(requestedUrl)
-								viewModel.setReloadWebView(false)
-							}
-						},
-						modifier = Modifier
-							.fillMaxWidth()
-							.weight(1f)
-					)
-					
-					Row(
-						verticalAlignment = Alignment.CenterVertically,
-						horizontalArrangement = Arrangement.Center,
-						modifier = Modifier
-							.fillMaxWidth()
-					) {
-						Image(
-							painter = painterResource(id = R.drawable.ic_launcher),
-							contentDescription = null,
-							modifier = Modifier
-								.size(24.dp)
-						)
-						
-						Text(
-							text = "UJIAN MAN 1 BOGOR",
-							style = MaterialTheme.typography.titleSmall.copy(
-								fontWeight = FontWeight.Bold
+				AndroidView(
+					factory = { context ->
+						WebView(context).apply {
+							layoutParams = ViewGroup.LayoutParams(
+								ViewGroup.LayoutParams.MATCH_PARENT,
+								ViewGroup.LayoutParams.MATCH_PARENT
 							)
-						)
-						
-						Image(
-							painter = painterResource(id = R.drawable.ic_launcher),
-							contentDescription = null,
-							modifier = Modifier
-								.size(24.dp)
-						)
-					}
-				}
-				
-				Box(
+							
+							webViewClient = object : WebViewClient() {
+								override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+									onWebViewLoadedChange(false)
+								}
+								
+								override fun onPageFinished(view: WebView?, url: String?) {
+									if (view?.progress == 100) {
+										onWebViewLoadedChange(true)
+									}
+								}
+							}
+							
+							webChromeClient = object : WebChromeClient() {}
+							
+							settings.apply {
+								userAgentString =
+									"Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"
+								useWideViewPort = true
+								javaScriptEnabled = true
+								builtInZoomControls = true
+								displayZoomControls = false
+								loadWithOverviewMode = true
+								
+								setSupportZoom(true)
+							}
+							
+							loadUrl(requestedUrl)
+						}
+					},
+					update = {
+						if (reloadWebView) {
+							it.loadUrl(requestedUrl)
+							onReloadWebView(false)
+						}
+					},
 					modifier = Modifier
-						.padding(4.dp)
-						.width(4.dp)
-						.fillMaxHeight()
-						.clip(CircleShape)
-						.background(Color(0xFF8fd0f8))
+						.fillMaxWidth()
+						.weight(1f)
 				)
+				
+				Row(
+					verticalAlignment = Alignment.CenterVertically,
+					horizontalArrangement = Arrangement.Center,
+					modifier = Modifier
+						.fillMaxWidth()
+				) {
+					Image(
+						painter = painterResource(id = R.drawable.ic_launcher),
+						contentDescription = null,
+						modifier = Modifier
+							.size(24.dp)
+					)
+					
+					Text(
+						text = "UJIAN MAN 1 BOGOR",
+						style = MaterialTheme.typography.titleSmall.copy(
+							fontWeight = FontWeight.Bold
+						)
+					)
+					
+					Image(
+						painter = painterResource(id = R.drawable.ic_launcher),
+						contentDescription = null,
+						modifier = Modifier
+							.size(24.dp)
+					)
+				}
 			}
 			
 			Box(
 				modifier = Modifier
 					.padding(4.dp)
-					.height(4.dp)
-					.fillMaxWidth()
+					.width(4.dp)
+					.fillMaxHeight()
 					.clip(CircleShape)
 					.background(Color(0xFF8fd0f8))
 			)
 		}
+		
+		Box(
+			modifier = Modifier
+				.padding(4.dp)
+				.height(4.dp)
+				.fillMaxWidth()
+				.clip(CircleShape)
+				.background(Color(0xFF8fd0f8))
+		)
 	}
+}
 
+@OptIn(ExperimentalAnimationApi::class)
+@Composable
+private fun ActionButtons(
+	modifier: Modifier = Modifier,
+	onRefresh: () -> Unit,
+	onExit: () -> Unit
+) {
+	
+	val systemUiController = rememberSystemUiController()
+	
+	var isFabExpanded by remember { mutableStateOf(false) }
+	var buttonExitVisible by remember { mutableStateOf(true) }
+	var buttonRefreshVisible by remember { mutableStateOf(true) }
+	
+	val iconRotationDegree by animateFloatAsState(
+		targetValue = if (isFabExpanded) 360f else 0f,
+		animationSpec = tween(250)
+	)
+	
+	Column(
+		horizontalAlignment = Alignment.End,
+		modifier = modifier
+	) {
+		Row {
+			AnimatedVisibility(
+				visible = buttonRefreshVisible and isFabExpanded,
+				enter = scaleIn(tween(200)),
+				exit = scaleOut(tween(200)),
+				modifier = Modifier
+					.padding(end = 16.dp)
+			) {
+				Button(
+					shape = MaterialTheme.shapes.small,
+					onClick = {
+						buttonRefreshVisible = false
+					}
+				) {
+					Text("REFRESH")
+				}
+			}
+			
+			AnimatedVisibility(
+				visible = isFabExpanded,
+				enter = scaleIn(tween(200)),
+				exit = scaleOut(tween(200))
+			) {
+				FloatingActionButton(
+					onClick = {
+						onRefresh()
+						isFabExpanded = false
+					}
+				) {
+					Icon(
+						painter = painterResource(id = R.drawable.ic_autorenew),
+						contentDescription = null,
+						modifier = Modifier
+							.size(24.dp)
+					)
+				}
+			}
+		}
+		
+		Spacer(modifier = Modifier.height(16.dp))
+		
+		Row {
+			AnimatedVisibility(
+				visible = buttonExitVisible and isFabExpanded,
+				enter = scaleIn(tween(200)),
+				exit = scaleOut(tween(200)),
+				modifier = Modifier
+					.padding(end = 16.dp)
+			) {
+				Button(
+					shape = MaterialTheme.shapes.small,
+					onClick = {
+						buttonExitVisible = false
+					}
+				) {
+					Text("EXIT")
+				}
+			}
+			
+			AnimatedVisibility(
+				visible = isFabExpanded,
+				enter = scaleIn(tween(200)),
+				exit = scaleOut(tween(200))
+			) {
+				FloatingActionButton(
+					onClick = onExit
+				) {
+					Icon(
+						imageVector = Icons.Rounded.Close,
+						contentDescription = null
+					)
+				}
+			}
+		}
+		
+		Spacer(modifier = Modifier.height(16.dp))
+		
+		FloatingActionButton(
+			onClick = {
+				isFabExpanded = !isFabExpanded
+				
+				if (!isFabExpanded) {
+					buttonExitVisible = true
+					buttonRefreshVisible = true
+				}
+				
+				when {
+					systemUiController.isNavigationBarVisible or systemUiController.isStatusBarVisible -> {
+						systemUiController.isNavigationBarVisible = false
+						systemUiController.isStatusBarVisible = false
+					}
+				}
+			}
+		) {
+			Icon(
+				imageVector = if (isFabExpanded) Icons.Rounded.Home else Icons.Rounded.Add,
+				contentDescription = null,
+				modifier = Modifier
+					.rotate(iconRotationDegree)
+			)
+		}
+	}
 }
