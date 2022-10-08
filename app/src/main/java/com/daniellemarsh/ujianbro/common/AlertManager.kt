@@ -10,6 +10,7 @@ class AlertManager @Inject constructor(
 	private val context: Context
 ) {
 	
+	private var listener: AlertListener? = null
 	private var mediaPlayer: MediaPlayer? = null
 	
 	private val audioManager: AudioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -21,20 +22,31 @@ class AlertManager @Inject constructor(
 	fun start() {
 		val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
 		
-		audioManager.setStreamVolume(
-			AudioManager.STREAM_MUSIC,
-			maxVolume,
-			AudioManager.FLAG_PLAY_SOUND
-		)
+//		audioManager.setStreamVolume(
+//			AudioManager.STREAM_MUSIC,
+//			maxVolume,
+//			AudioManager.FLAG_PLAY_SOUND
+//		)
 		
 		if (mediaPlayer?.isPlaying == false) {
 			mediaPlayer?.start()
 		}
+		
+		listener?.onAlert()
+	}
+	
+	fun setListener(l: AlertListener) {
+		listener = l
 	}
 	
 	fun onDestroy() {
 		mediaPlayer?.release()
 		mediaPlayer = null
+	}
+	
+	interface AlertListener {
+		
+		fun onAlert()
 	}
 	
 }

@@ -24,6 +24,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.daniellemarsh.ujianbro.common.AlertManager
+import com.daniellemarsh.ujianbro.common.networking.ConnectivityManager
 import com.daniellemarsh.ujianbro.extension.fraction
 import com.daniellemarsh.ujianbro.extension.toast
 import com.daniellemarsh.ujianbro.service.FGService
@@ -43,6 +44,7 @@ import javax.inject.Inject
 class MainActivity : ComponentActivity(), ServiceConnection {
 	
 	@Inject lateinit var alertManager: AlertManager
+	@Inject lateinit var connectivityManager: ConnectivityManager
 	
 	private lateinit var gestureDetector: GestureDetector
 	
@@ -78,6 +80,8 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 			}
 		}
 		
+		connectivityManager.registerConnectionObserver(this)
+		
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
 			window.decorView.setOnApplyWindowInsetsListener { v, insets ->
 				val mInsets = v.onApplyWindowInsets(insets)
@@ -101,49 +105,6 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 //		window.decorView.filterTouchesWhenObscured = true
 		window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
 		
-		gestureDetector = GestureDetector(this, object : GestureDetector.OnGestureListener {
-			override fun onDown(e: MotionEvent): Boolean {
-				return false
-			}
-			
-			override fun onShowPress(e: MotionEvent) {
-				return
-			}
-			
-			override fun onSingleTapUp(e: MotionEvent): Boolean {
-				return false
-			}
-			
-			override fun onScroll(e1: MotionEvent, e2: MotionEvent, distanceX: Float, distanceY: Float): Boolean {
-				Timber.i("coor: (${e1.x}, ${e1.y}), (${e2.x}, ${e2.y})")
-				
-				val x = e2.x
-				val y = e2.y
-				
-				val (width, height) = screenSize()
-				
-				// width = 1075
-				// min left with fraction 0.9 = 967.5
-				// min right with fraction 0.9 = 107.5
-				val minLeft = width.fraction(0.97f)
-				val minRight = width - minLeft
-				
-				if (x < minRight || x > minLeft) {
-					alertManager.start()
-				}
-				
-				return true
-			}
-			
-			override fun onLongPress(e: MotionEvent) {
-				return
-			}
-			
-			override fun onFling(e1: MotionEvent, e2: MotionEvent, velocityX: Float, velocityY: Float): Boolean {
-				return false
-			}
-		})
-		
 		homeViewModel.setListener(object : HomeListener {
 			override fun exit() {
 				fromExitButton = true
@@ -152,6 +113,12 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 			
 			override fun alert() {
 				alertManager.start()
+			}
+		})
+		
+		alertManager.setListener(object : AlertManager.AlertListener {
+			override fun onAlert() {
+				homeViewModel.setReloadWebView(true)
 			}
 		})
 		
@@ -226,6 +193,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		super.onDestroy()
 		
 		alertManager.onDestroy()
+		connectivityManager.unregisterConnectionObserver(this)
 		
 		try {
 			unbindService(this)

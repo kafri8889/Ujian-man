@@ -1,18 +1,15 @@
 package com.daniellemarsh.ujianbro.ui.home
 
 import android.annotation.SuppressLint
+import android.graphics.Bitmap
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.webkit.*
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.focusable
@@ -27,6 +24,7 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -50,6 +48,7 @@ import com.daniellemarsh.ujianbro.R
 import com.daniellemarsh.ujianbro.common.DelayManager
 import com.daniellemarsh.ujianbro.extension.fraction
 import com.daniellemarsh.ujianbro.extension.toast
+import com.daniellemarsh.ujianbro.uicomponent.LoadingDialog
 import com.daniellemarsh.ujianbro.utils.Utils.screenSize
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import kotlinx.coroutines.Dispatchers
@@ -75,8 +74,11 @@ fun HomeScreen(
 	) = remember { (context as MainActivity).screenSize() }
 	
 	val requestedUrl by viewModel.requestedUrl.collectAsState()
+	val reloadWebView by viewModel.reloadWebView.collectAsState()
+	val isNetworkHaveInternet by viewModel.isNetworkHaveInternet.collectAsState()
 	
 	var isFabExpanded by remember { mutableStateOf(false) }
+	var isWebViewLoaded by remember { mutableStateOf(false) }
 	var buttonExitVisible by remember { mutableStateOf(true) }
 	var buttonRefreshVisible by remember { mutableStateOf(true) }
 	
@@ -98,6 +100,20 @@ fun HomeScreen(
 		modifier = Modifier
 			.fillMaxSize()
 	) {
+		AnimatedVisibility(
+			visible = !isWebViewLoaded or !isNetworkHaveInternet,
+			enter = fadeIn(
+				animationSpec = tween(250)
+			),
+			exit = fadeOut(
+				animationSpec = tween(250)
+			),
+			modifier = Modifier
+				.zIndex(100f)
+		) {
+			LoadingDialog(isPlaying = !isWebViewLoaded or !isNetworkHaveInternet)
+		}
+		
 		AndroidView(
 			factory = { ctx ->
 				View(ctx).apply {
@@ -106,7 +122,7 @@ fun HomeScreen(
 						ViewGroup.LayoutParams.MATCH_PARENT
 					)
 					
-					setOnTouchListener { v, event ->
+					setOnTouchListener { _, event ->
 						Timber.i("coor: ${event.x}, ${event.y}")
 						
 						val x = event.x
@@ -137,7 +153,6 @@ fun HomeScreen(
 			},
 			modifier = Modifier
 				.fillMaxSize()
-				.zIndex(1f)
 		)
 		
 		Column(
@@ -172,7 +187,7 @@ fun HomeScreen(
 				) {
 					FloatingActionButton(
 						onClick = {
-							viewModel.refresh()
+							viewModel.setReloadWebView(true)
 							isFabExpanded = false
 						}
 					) {
@@ -293,7 +308,20 @@ fun HomeScreen(
 									ViewGroup.LayoutParams.MATCH_PARENT
 								)
 								
-								webViewClient = WebViewClient()
+								webViewClient = object : WebViewClient() {
+									override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+										isWebViewLoaded = false
+									}
+									
+									override fun onPageFinished(view: WebView?, url: String?) {
+										if (view?.progress == 100) {
+											isWebViewLoaded = true
+										}
+									}
+								}
+								
+								webChromeClient = object : WebChromeClient() {}
+								
 								settings.apply {
 									userAgentString =
 										"Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"
@@ -310,7 +338,10 @@ fun HomeScreen(
 							}
 						},
 						update = {
-							it.loadUrl(requestedUrl)
+							if (reloadWebView) {
+								it.loadUrl(requestedUrl)
+								viewModel.setReloadWebView(false)
+							}
 						},
 						modifier = Modifier
 							.fillMaxWidth()
