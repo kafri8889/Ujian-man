@@ -5,9 +5,11 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.content.res.Configuration
 import android.media.MediaPlayer
+import android.net.Uri
 import android.os.*
 import android.util.Log
 import android.view.*
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -19,6 +21,9 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.core.content.ContextCompat.startActivity
+import androidx.core.content.FileProvider
+import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.Lifecycle
@@ -37,6 +42,7 @@ import com.daniellemarsh.ujianbro.utils.Utils.screenSize
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import timber.log.Timber
+import java.io.File
 import javax.inject.Inject
 
 
@@ -105,6 +111,17 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 //		window.decorView.filterTouchesWhenObscured = true
 		window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
 		
+//		startActivity(
+//			Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
+//				flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+//
+//				setDataAndType(
+//					Uri.parse("content://com.daniellemarsh.ujianbro.provider/external_files/Download/UjianBro/89421app-release.apk"),
+//					"application/vnd.android.package-archive"
+//				)
+//			}
+//		)
+		
 		homeViewModel.setListener(object : HomeListener {
 			override fun exit() {
 				fromExitButton = true
@@ -113,6 +130,21 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 			
 			override fun alert() {
 				alertManager.start()
+			}
+			
+			override fun installUpdate(uri: Uri) {
+				Timber.i("pathhhhh: ${uri.path}, $uri")
+				
+				startActivity(
+					Intent(Intent.ACTION_VIEW).apply {
+						flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+						
+						setDataAndType(
+							uri,
+							"application/vnd.android.package-archive"
+						)
+					}
+				)
 			}
 		})
 		
@@ -165,10 +197,6 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 			while (!hasFocus) {
 				delay(900)
 				withContext(Dispatchers.Main) {
-//					if (!isActivityRunningInForeground) {
-//						fgService?.po()
-//					}
-					
 					alertManager.start()
 				}
 			}
@@ -177,6 +205,11 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 	
 	override fun onNewIntent(intent: Intent?) {
 		super.onNewIntent(intent)
+	}
+	
+	override fun onResume() {
+		super.onResume()
+		alertManager.allowAlert = true
 	}
 	
 	override fun onStart() {

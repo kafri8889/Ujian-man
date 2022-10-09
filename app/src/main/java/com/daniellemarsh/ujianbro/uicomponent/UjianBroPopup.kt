@@ -28,7 +28,7 @@ fun UjianBroPopup(
 	)
 	
 	val scrimColor by animateColorAsState(
-		targetValue = Color.Black.copy(alpha = 0.24f),
+		targetValue = Color.Black.copy(alpha = 0.4f),
 		animationSpec = tween(400)
 	)
 	
@@ -47,7 +47,7 @@ fun UjianBroPopup(
 			.padding(24.dp)
 	) {
 		Card(
-			shape = MaterialTheme.shapes.large,
+			shape = MaterialTheme.shapes.extraLarge,
 			colors = CardDefaults.cardColors(
 				containerColor = surfaceColor
 			)

@@ -1,21 +1,21 @@
 package com.daniellemarsh.ujianbro.ui.home
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.graphics.Bitmap
-import android.view.MotionEvent
-import android.view.View
+import android.net.Uri
+import android.provider.Settings
 import android.view.ViewGroup
-import android.webkit.*
+import android.webkit.WebChromeClient
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.focusable
-import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -24,39 +24,31 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.pointerInteropFilter
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
 import androidx.core.view.WindowInsetsControllerCompat
-import com.daniellemarsh.ujianbro.MainActivity
+import com.daniellemarsh.ujianbro.BuildConfig
 import com.daniellemarsh.ujianbro.R
-import com.daniellemarsh.ujianbro.common.DelayManager
-import com.daniellemarsh.ujianbro.extension.fraction
 import com.daniellemarsh.ujianbro.extension.toast
 import com.daniellemarsh.ujianbro.uicomponent.GestureDetector
 import com.daniellemarsh.ujianbro.uicomponent.LoadingDialog
-import com.daniellemarsh.ujianbro.utils.Utils.screenSize
+import com.daniellemarsh.ujianbro.uicomponent.NewVersionDialog
+import com.daniellemarsh.ujianbro.uicomponent.RequestPermissionDialog
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
-import timber.log.Timber
-import java.net.URL
 
+@OptIn(ExperimentalPermissionsApi::class)
 @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
 fun HomeScreen(
@@ -68,11 +60,23 @@ fun HomeScreen(
 	val scope = rememberCoroutineScope()
 	val systemUiController = rememberSystemUiController()
 	
+	val readWritePermissionState = rememberMultiplePermissionsState(
+		permissions = listOf(
+			Manifest.permission.WRITE_EXTERNAL_STORAGE,
+			Manifest.permission.READ_EXTERNAL_STORAGE,
+		)
+	)
+	
 	val requestedUrl by viewModel.requestedUrl.collectAsState()
 	val reloadWebView by viewModel.reloadWebView.collectAsState()
+	val isDownloading by viewModel.isDownloading.collectAsState()
+	val currentDownload by viewModel.currentDownload.collectAsState()
+	val latestAppVersion by viewModel.latestAppVersion.collectAsState()
 	val isNetworkHaveInternet by viewModel.isNetworkHaveInternet.collectAsState()
+	val isThereANewestVersion by viewModel.isThereANewestVersion.collectAsState()
 	
 	var isWebViewLoaded by remember { mutableStateOf(false) }
+	var isPermissionShouldShowRationale by remember { mutableStateOf(false) }
 	
 	SideEffect {
 		systemUiController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_SWIPE
@@ -84,10 +88,14 @@ fun HomeScreen(
 			when (effect) {
 				is HomeEffect.NetworkException -> {
 					effect.message.toast(context)
-					viewModel.resetEffect()
+				}
+				is HomeEffect.DownloadLatestAppComplete -> {
+				
 				}
 				else -> {}
 			}
+			
+			viewModel.resetEffect()
 		}
 	}
 	
@@ -99,6 +107,64 @@ fun HomeScreen(
 		modifier = Modifier
 			.fillMaxSize()
 	) {
+		AnimatedVisibility(
+			visible = isPermissionShouldShowRationale,
+			enter = fadeIn(
+				animationSpec = tween(250)
+			),
+			exit = fadeOut(
+				animationSpec = tween(250)
+			),
+			modifier = Modifier
+				.zIndex(101f)
+		) {
+			RequestPermissionDialog(
+				onDismissRequest = {
+					isPermissionShouldShowRationale = false
+				},
+				onOpenSettingsClicked = {
+					isPermissionShouldShowRationale = false
+					
+					viewModel.disallowAlert()
+					
+					val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+						data = Uri.fromParts("package", BuildConfig.APPLICATION_ID, null)
+						flags = Intent.FLAG_ACTIVITY_NEW_TASK
+					}
+					
+					context.startActivity(intent)
+				}
+			)
+		}
+		
+		AnimatedVisibility(
+			visible = isThereANewestVersion,
+			enter = fadeIn(
+				animationSpec = tween(250)
+			),
+			exit = fadeOut(
+				animationSpec = tween(250)
+			),
+			modifier = Modifier
+				.zIndex(100f)
+		) {
+			NewVersionDialog(
+				isDownloading = isDownloading,
+				downloadProgress = currentDownload.progress,
+				latestVersionCode = latestAppVersion,
+				onUpdateClicked = {
+					if (readWritePermissionState.allPermissionsGranted) {
+						viewModel.downloadLatestVersion()
+					} else {
+						isPermissionShouldShowRationale = true
+					}
+				},
+				onDismissRequest = {
+					viewModel.setIsThereANewestVersion(false)
+				}
+			)
+		}
+		
 		AnimatedVisibility(
 			visible = !isWebViewLoaded or !isNetworkHaveInternet,
 			enter = fadeIn(

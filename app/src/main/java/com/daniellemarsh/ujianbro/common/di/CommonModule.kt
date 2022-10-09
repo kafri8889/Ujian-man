@@ -1,6 +1,8 @@
-package com.daniellemarsh.ujianbro.common
+package com.daniellemarsh.ujianbro.common.di
 
 import android.content.Context
+import com.daniellemarsh.ujianbro.common.AlertManager
+import com.daniellemarsh.ujianbro.common.DownloadManager
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,6 +20,14 @@ class CommonModule {
 		@ApplicationContext context: Context
 	): AlertManager {
 		return AlertManager(context)
+	}
+	
+	@Singleton
+	@Provides
+	fun provideDownloadManager(
+		@ApplicationContext context: Context
+	): DownloadManager {
+		return DownloadManager(context)
 	}
 	
 }

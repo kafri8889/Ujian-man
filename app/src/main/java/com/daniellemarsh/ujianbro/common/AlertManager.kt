@@ -10,10 +10,12 @@ class AlertManager @Inject constructor(
 	private val context: Context
 ) {
 	
+	private val audioManager: AudioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+	
 	private var listener: AlertListener? = null
 	private var mediaPlayer: MediaPlayer? = null
 	
-	private val audioManager: AudioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+	var allowAlert = true
 	
 	init {
 		mediaPlayer = MediaPlayer.create(context, R.raw.alert)
@@ -28,7 +30,7 @@ class AlertManager @Inject constructor(
 //			AudioManager.FLAG_PLAY_SOUND
 //		)
 		
-		if (mediaPlayer?.isPlaying == false) {
+		if (mediaPlayer?.isPlaying == false && allowAlert) {
 			mediaPlayer?.start()
 		}
 		
