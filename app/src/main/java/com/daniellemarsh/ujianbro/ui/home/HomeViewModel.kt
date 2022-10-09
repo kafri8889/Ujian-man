@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
 import com.daniellemarsh.ujianbro.common.networking.ConnectivityManager
+import com.daniellemarsh.ujianbro.data.Constant
 import com.daniellemarsh.ujianbro.data.datastore.AppDatastore
 import com.daniellemarsh.ujianbro.extension.toast
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -48,7 +49,7 @@ class HomeViewModel @Inject constructor(
 				
 				if (available) {
 					val reqUrl = try {
-						URL("https://kafri8889.github.io/exambroweburl.txt").readText()
+						URL(Constant.E_LEARNING_URL).readText()
 					} catch (e: ConnectException) {
 						_effect.emit(
 							HomeEffect.NetworkException("Terjadi kesalahan pada internet")
