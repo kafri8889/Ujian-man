@@ -2,7 +2,10 @@ package com.daniellemarsh.ujianbro.ui.home
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.bluetooth.BluetoothManager
+import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.Settings
@@ -36,14 +39,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
+import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.daniellemarsh.ujianbro.BuildConfig
 import com.daniellemarsh.ujianbro.R
 import com.daniellemarsh.ujianbro.extension.toast
-import com.daniellemarsh.ujianbro.uicomponent.GestureDetector
-import com.daniellemarsh.ujianbro.uicomponent.LoadingDialog
-import com.daniellemarsh.ujianbro.uicomponent.NewVersionDialog
-import com.daniellemarsh.ujianbro.uicomponent.RequestPermissionDialog
+import com.daniellemarsh.ujianbro.uicomponent.*
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
@@ -72,6 +73,7 @@ fun HomeScreen(
 	val isDownloading by viewModel.isDownloading.collectAsState()
 	val currentDownload by viewModel.currentDownload.collectAsState()
 	val latestAppVersion by viewModel.latestAppVersion.collectAsState()
+	val isBluetoothEnabled by viewModel.isBluetoothEnabled.collectAsState()
 	val isNetworkHaveInternet by viewModel.isNetworkHaveInternet.collectAsState()
 	val isThereANewestVersion by viewModel.isThereANewestVersion.collectAsState()
 	
@@ -107,6 +109,20 @@ fun HomeScreen(
 		modifier = Modifier
 			.fillMaxSize()
 	) {
+		AnimatedVisibility(
+			visible = isBluetoothEnabled,
+			enter = fadeIn(
+				animationSpec = tween(250)
+			),
+			exit = fadeOut(
+				animationSpec = tween(250)
+			),
+			modifier = Modifier
+				.zIndex(102f)
+		) {
+			BluetoothEnabledDialog()
+		}
+		
 		AnimatedVisibility(
 			visible = isPermissionShouldShowRationale,
 			enter = fadeIn(

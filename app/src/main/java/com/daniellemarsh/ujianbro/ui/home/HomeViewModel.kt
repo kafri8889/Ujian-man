@@ -1,6 +1,5 @@
 package com.daniellemarsh.ujianbro.ui.home
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
@@ -10,27 +9,20 @@ import com.daniellemarsh.ujianbro.common.DownloadItem
 import com.daniellemarsh.ujianbro.common.DownloadManager
 import com.daniellemarsh.ujianbro.common.networking.ConnectivityManager
 import com.daniellemarsh.ujianbro.data.Constant
-import com.daniellemarsh.ujianbro.data.datastore.AppDatastore
-import com.daniellemarsh.ujianbro.extension.toast
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 import java.net.ConnectException
 import java.net.URL
-import java.util.concurrent.Executors
 import javax.inject.Inject
-import kotlin.random.Random
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-	@ApplicationContext private val ctx: Context,
+//	@ApplicationContext private val ctx: Context,
 	private val alertManager: AlertManager,
 	private val downloadManager: DownloadManager,
 	private val connectivityManager: ConnectivityManager
@@ -59,6 +51,9 @@ class HomeViewModel @Inject constructor(
 	private val _isThereANewestVersion = MutableStateFlow(false)
 	val isThereANewestVersion: StateFlow<Boolean> = _isThereANewestVersion
 	
+	private val _isBluetoothEnabled = MutableStateFlow(false)
+	val isBluetoothEnabled: StateFlow<Boolean> = _isBluetoothEnabled
+	
 	val currentDownload: StateFlow<DownloadItem>
 		get() = downloadManager.currentDownload
 	
@@ -81,7 +76,7 @@ class HomeViewModel @Inject constructor(
 					_isThereANewestVersion.emit(false)
 					
 					listener?.installUpdate(currentDownload.value.uri)
-					"Download Selesai".toast(ctx)
+//					"Download Selesai".toast(ctx)
 				}
 			}
 		})
@@ -161,6 +156,12 @@ class HomeViewModel @Inject constructor(
 					)
 				}
 			} else _isDownloading.emit(false)
+		}
+	}
+	
+	fun setBluetoothEnabled(isEnabled: Boolean) {
+		viewModelScope.launch {
+			_isBluetoothEnabled.emit(isEnabled)
 		}
 	}
 	

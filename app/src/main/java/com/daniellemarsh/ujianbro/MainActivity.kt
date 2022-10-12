@@ -1,15 +1,14 @@
 package com.daniellemarsh.ujianbro
 
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.content.ComponentName
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.ServiceConnection
-import android.content.res.Configuration
-import android.media.MediaPlayer
 import android.net.Uri
 import android.os.*
-import android.util.Log
 import android.view.*
-import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -21,28 +20,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.core.content.ContextCompat.startActivity
-import androidx.core.content.FileProvider
-import androidx.core.net.toUri
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import com.daniellemarsh.ujianbro.common.AlertManager
 import com.daniellemarsh.ujianbro.common.networking.ConnectivityManager
-import com.daniellemarsh.ujianbro.extension.fraction
-import com.daniellemarsh.ujianbro.extension.toast
+import com.daniellemarsh.ujianbro.receiver.BluetoothReceiver
 import com.daniellemarsh.ujianbro.service.FGService
 import com.daniellemarsh.ujianbro.theme.UjianBroTheme
 import com.daniellemarsh.ujianbro.ui.home.HomeListener
 import com.daniellemarsh.ujianbro.ui.home.HomeScreen
 import com.daniellemarsh.ujianbro.ui.home.HomeViewModel
-import com.daniellemarsh.ujianbro.utils.Utils
-import com.daniellemarsh.ujianbro.utils.Utils.screenSize
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import timber.log.Timber
-import java.io.File
 import javax.inject.Inject
 
 
@@ -52,7 +43,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 	@Inject lateinit var alertManager: AlertManager
 	@Inject lateinit var connectivityManager: ConnectivityManager
 	
-	private lateinit var gestureDetector: GestureDetector
+	private lateinit var bluetoothReceiver: BluetoothReceiver
 	
 	private val homeViewModel: HomeViewModel by viewModels()
 	
@@ -63,6 +54,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 	private var isActivityRunningInForeground = false
 	private var fromExitButton = false
 	
+	@RequiresApi(Build.VERSION_CODES.M)
 	@OptIn(ExperimentalFoundationApi::class)
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
@@ -84,6 +76,22 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 					}
 				}
 			}
+		}
+		
+		val bluetoothIntentFilter = IntentFilter(BluetoothAdapter.ACTION_STATE_CHANGED)
+		bluetoothReceiver = BluetoothReceiver(
+			onDisabled = {
+				homeViewModel.setBluetoothEnabled(false)
+			},
+			onEnabled = {
+				homeViewModel.setBluetoothEnabled(true)
+			}
+		)
+		
+		registerReceiver(bluetoothReceiver, bluetoothIntentFilter)
+		
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+			window.setHideOverlayWindows(true)
 		}
 		
 		connectivityManager.registerConnectionObserver(this)
@@ -210,6 +218,10 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 	override fun onResume() {
 		super.onResume()
 		alertManager.allowAlert = true
+		
+		val bm = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
+		
+		homeViewModel.setBluetoothEnabled(bm.adapter.isEnabled)
 	}
 	
 	override fun onStart() {
@@ -227,6 +239,8 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		
 		alertManager.onDestroy()
 		connectivityManager.unregisterConnectionObserver(this)
+		
+		unregisterReceiver(bluetoothReceiver)
 		
 		try {
 			unbindService(this)
