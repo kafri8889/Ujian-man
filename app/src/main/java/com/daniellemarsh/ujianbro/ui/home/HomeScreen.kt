@@ -82,7 +82,7 @@ fun HomeScreen(
 	
 	SideEffect {
 		systemUiController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_SWIPE
-		systemUiController.isNavigationBarVisible = false
+		systemUiController.isSystemBarsVisible = false
 	}
 	
 	LaunchedEffect(viewModel) {

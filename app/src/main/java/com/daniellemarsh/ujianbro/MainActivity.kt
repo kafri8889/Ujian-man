@@ -21,10 +21,12 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.daniellemarsh.ujianbro.common.AlertManager
 import com.daniellemarsh.ujianbro.common.networking.ConnectivityManager
+import com.daniellemarsh.ujianbro.extension.toast
 import com.daniellemarsh.ujianbro.receiver.BluetoothReceiver
 import com.daniellemarsh.ujianbro.service.FGService
 import com.daniellemarsh.ujianbro.theme.UjianBroTheme
@@ -90,6 +92,12 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		
 		registerReceiver(bluetoothReceiver, bluetoothIntentFilter)
 		
+		WindowCompat.setDecorFitsSystemWindows(window, false)
+		window.setFlags(
+			WindowManager.LayoutParams.FLAG_SECURE,
+			WindowManager.LayoutParams.FLAG_SECURE
+		)
+		
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
 			window.setHideOverlayWindows(true)
 		}
@@ -115,9 +123,6 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 				}
 			}
 		}
-		
-//		window.decorView.filterTouchesWhenObscured = true
-		window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
 		
 //		startActivity(
 //			Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
@@ -221,7 +226,12 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		
 		val bm = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
 		
-		homeViewModel.setBluetoothEnabled(bm.adapter.isEnabled)
+		try {
+			homeViewModel.setBluetoothEnabled(bm.adapter.isEnabled)
+		} catch (e: NullPointerException) {
+			Timber.e(e)
+			Timber.i("Bluetooth not supported")
+		}
 	}
 	
 	override fun onStart() {
@@ -260,7 +270,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 	}
 	
 	private fun hideSystemBars() {
-		val windowInsetsController = ViewCompat.getWindowInsetsController(window.decorView) ?: return
+		val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
 		// Configure the behavior of the hidden system bars
 //		windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 		// Hide both the status bar and the navigation bar
