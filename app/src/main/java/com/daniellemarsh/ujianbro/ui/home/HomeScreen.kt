@@ -192,7 +192,12 @@ fun HomeScreen(
 			modifier = Modifier
 				.zIndex(100f)
 		) {
-			LoadingDialog(isPlaying = !isWebViewLoaded or !isNetworkHaveInternet)
+			LoadingDialog(
+				isPlaying = !isWebViewLoaded or !isNetworkHaveInternet,
+				onExitClicked = {
+					viewModel.exit()
+				}
+			)
 		}
 		
 		GestureDetector(

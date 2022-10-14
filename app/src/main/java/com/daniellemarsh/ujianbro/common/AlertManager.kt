@@ -30,7 +30,7 @@ class AlertManager @Inject constructor(
 //			AudioManager.FLAG_PLAY_SOUND
 //		)
 		
-		if (mediaPlayer?.isPlaying == false && allowAlert) {
+		if (allowAlert) {
 			mediaPlayer?.start()
 		}
 		

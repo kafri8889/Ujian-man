@@ -1,7 +1,8 @@
 package com.daniellemarsh.ujianbro.uicomponent
 
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -12,7 +13,8 @@ import com.airbnb.lottie.compose.rememberLottieComposition
 
 @Composable
 fun LoadingDialog(
-	isPlaying: Boolean
+	isPlaying: Boolean,
+	onExitClicked: () -> Unit
 ) {
 	
 	val lottieComposition by rememberLottieComposition(
@@ -20,14 +22,23 @@ fun LoadingDialog(
 	)
 	
 	UjianBroPopup(onDismissRequest = {}) {
-		LottieAnimation(
-			composition = lottieComposition,
-			iterations = Int.MAX_VALUE,
-			isPlaying = isPlaying,
+		Column(
+			horizontalAlignment = Alignment.CenterHorizontally,
 			modifier = Modifier
-				.fillMaxWidth()
-				.aspectRatio(1f)
 				.align(Alignment.Center)
-		)
+		) {
+			LottieAnimation(
+				composition = lottieComposition,
+				iterations = Int.MAX_VALUE,
+				isPlaying = isPlaying,
+				modifier = Modifier
+					.fillMaxWidth()
+					.aspectRatio(1f)
+			)
+			
+			FilledTonalButton(onClick = onExitClicked) {
+				Text("Keluar")
+			}
+		}
 	}
 }
