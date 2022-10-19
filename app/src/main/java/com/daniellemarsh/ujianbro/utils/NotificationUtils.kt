@@ -53,4 +53,21 @@ object NotificationUtils {
 				.build()
 		}
 	}
+	
+	fun simpleNotification(context: Context, title: String, text: String): Notification {
+		return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+			Notification.Builder(context, channelID)
+				.setContentTitle(title)
+				.setContentText(text)
+				.setCategory(Notification.CATEGORY_STATUS)
+				.build()
+		} else {
+			Notification.Builder(context)
+				.setContentTitle(title)
+				.setContentText(text)
+				.setCategory(Notification.CATEGORY_STATUS)
+				.build()
+		}
+	}
+	
 }

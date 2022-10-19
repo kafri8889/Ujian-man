@@ -180,7 +180,6 @@ class HomeViewModel @Inject constructor(
 	}
 	
 	fun exit() {
-		alertManager.allowAlert = false
 		listener?.exit()
 	}
 	

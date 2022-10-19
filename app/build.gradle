@@ -4,6 +4,7 @@ plugins {
     id 'dagger.hilt.android.plugin'
     id 'kotlin-kapt'
     id 'kotlin-parcelize'
+    id 'com.google.gms.google-services'
 }
 
 android {
@@ -28,7 +29,7 @@ android {
             minifyEnabled false
             kotlinOptions {
                 freeCompilerArgs += [
-                        '-Xopt-in=kotlin.RequiresOptIn'
+                        '-opt-in=kotlin.RequiresOptIn'
                 ]
                 freeCompilerArgs += [
                         "-Xjvm-default=all",
@@ -40,7 +41,7 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             kotlinOptions {
                 freeCompilerArgs += [
-                        '-Xopt-in=kotlin.RequiresOptIn'
+                        '-opt-in=kotlin.RequiresOptIn'
                 ]
                 freeCompilerArgs += [
                         "-Xjvm-default=all",
@@ -83,7 +84,7 @@ dependencies {
     implementation 'com.google.android.material:material:1.6.1'
     implementation "androidx.compose.material:material:$compose_version"
     implementation "androidx.compose.material:material-icons-extended:$compose_version"
-    implementation "androidx.compose.material3:material3:1.0.0-beta03"
+    implementation "androidx.compose.material3:material3:1.0.0-rc01"
 
     // Lifecycle
     implementation "androidx.lifecycle:lifecycle-runtime-compose:2.6.0-alpha02"
@@ -92,6 +93,9 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1'
     implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
     kapt 'androidx.lifecycle:lifecycle-common-java8:2.5.1'
+
+    // Firebase
+    implementation 'com.google.firebase:firebase-messaging-ktx:23.1.0'
 
     // Dependency Injection
     implementation 'com.google.dagger:hilt-android:2.42'

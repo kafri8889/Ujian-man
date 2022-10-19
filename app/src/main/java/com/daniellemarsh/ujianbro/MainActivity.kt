@@ -138,7 +138,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		homeViewModel.setListener(object : HomeListener {
 			override fun exit() {
 				fromExitButton = true
-				finish()
+				finishAndRemoveTask()
 			}
 			
 			override fun alert() {
@@ -222,6 +222,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 	
 	override fun onResume() {
 		super.onResume()
+		fromExitButton = false
 		alertManager.allowAlert = true
 		
 		val bm = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager

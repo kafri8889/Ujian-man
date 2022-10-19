@@ -8,6 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
 import android.provider.Settings
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
@@ -45,8 +46,7 @@ import com.daniellemarsh.ujianbro.BuildConfig
 import com.daniellemarsh.ujianbro.R
 import com.daniellemarsh.ujianbro.extension.toast
 import com.daniellemarsh.ujianbro.uicomponent.*
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.accompanist.permissions.*
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 @OptIn(ExperimentalPermissionsApi::class)
@@ -60,6 +60,10 @@ fun HomeScreen(
 
 	val scope = rememberCoroutineScope()
 	val systemUiController = rememberSystemUiController()
+	
+	val postNotifPermissionState = rememberPermissionState(
+		permission = Manifest.permission.POST_NOTIFICATIONS
+	)
 	
 	val readWritePermissionState = rememberMultiplePermissionsState(
 		permissions = listOf(
@@ -79,10 +83,15 @@ fun HomeScreen(
 	
 	var isWebViewLoaded by remember { mutableStateOf(false) }
 	var isPermissionShouldShowRationale by remember { mutableStateOf(false) }
+	var isPostNotifPermissionShouldShowRationale by remember { mutableStateOf(true) }
 	
 	SideEffect {
 		systemUiController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_SWIPE
 		systemUiController.isSystemBarsVisible = false
+		
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !postNotifPermissionState.status.isGranted) {
+			postNotifPermissionState.launchPermissionRequest()
+		}
 	}
 	
 	LaunchedEffect(viewModel) {
@@ -118,9 +127,39 @@ fun HomeScreen(
 				animationSpec = tween(250)
 			),
 			modifier = Modifier
-				.zIndex(102f)
+				.zIndex(103f)
 		) {
 			BluetoothEnabledDialog()
+		}
+		
+		AnimatedVisibility(
+			visible = !postNotifPermissionState.status.isGranted and isPostNotifPermissionShouldShowRationale,
+			enter = fadeIn(
+				animationSpec = tween(250)
+			),
+			exit = fadeOut(
+				animationSpec = tween(250)
+			),
+			modifier = Modifier
+				.zIndex(102f)
+		) {
+			RequestPostNotifPermissionDialog(
+				onDismissRequest = {
+					isPostNotifPermissionShouldShowRationale = false
+				},
+				onOpenSettingsClicked = {
+					isPostNotifPermissionShouldShowRationale = false
+					
+					viewModel.disallowAlert()
+					
+					val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+						data = Uri.fromParts("package", BuildConfig.APPLICATION_ID, null)
+						flags = Intent.FLAG_ACTIVITY_NEW_TASK
+					}
+					
+					context.startActivity(intent)
+				}
+			)
 		}
 		
 		AnimatedVisibility(
