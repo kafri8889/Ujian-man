@@ -24,11 +24,11 @@ class AlertManager @Inject constructor(
 	fun start() {
 		val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
 		
-//		audioManager.setStreamVolume(
-//			AudioManager.STREAM_MUSIC,
-//			maxVolume,
-//			AudioManager.FLAG_PLAY_SOUND
-//		)
+		audioManager.setStreamVolume(
+			AudioManager.STREAM_MUSIC,
+			maxVolume,
+			AudioManager.FLAG_PLAY_SOUND
+		)
 		
 		if (allowAlert) {
 			mediaPlayer?.start()

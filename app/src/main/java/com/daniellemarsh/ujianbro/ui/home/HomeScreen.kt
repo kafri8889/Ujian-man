@@ -193,7 +193,7 @@ fun HomeScreen(
 		}
 		
 		AnimatedVisibility(
-			visible = BuildConfig.VERSION_CODE == latestAppVersion,
+			visible = BuildConfig.VERSION_CODE < latestAppVersion,
 			enter = fadeIn(
 				animationSpec = tween(250)
 			),
