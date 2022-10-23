@@ -26,6 +26,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.daniellemarsh.ujianbro.common.AlertManager
 import com.daniellemarsh.ujianbro.common.networking.ConnectivityManager
+import com.daniellemarsh.ujianbro.data.Constant
 import com.daniellemarsh.ujianbro.extension.toast
 import com.daniellemarsh.ujianbro.receiver.BluetoothReceiver
 import com.daniellemarsh.ujianbro.service.FGService
@@ -36,6 +37,8 @@ import com.daniellemarsh.ujianbro.ui.home.HomeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import timber.log.Timber
+import java.net.URL
+import java.util.concurrent.Executors
 import javax.inject.Inject
 
 

@@ -97,6 +97,10 @@ dependencies {
     // Firebase
     implementation 'com.google.firebase:firebase-messaging-ktx:23.1.0'
 
+    // Networking
+    implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
+    implementation 'com.squareup.retrofit2:retrofit:2.9.0'
+
     // Dependency Injection
     implementation 'com.google.dagger:hilt-android:2.42'
     kapt 'androidx.hilt:hilt-compiler:1.0.0'

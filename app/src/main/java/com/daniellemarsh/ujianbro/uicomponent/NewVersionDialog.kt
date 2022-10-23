@@ -93,13 +93,13 @@ fun NewVersionDialog(
 				modifier = Modifier
 					.fillMaxWidth()
 			) {
-				TextButton(
-					onClick = onDismissRequest
-				) {
-					Text("Tutup")
-				}
-				
-				Spacer(modifier = Modifier.width(8.dp))
+//				TextButton(
+//					onClick = onDismissRequest
+//				) {
+//					Text("Tutup")
+//				}
+//
+//				Spacer(modifier = Modifier.width(8.dp))
 				
 				Button(
 					onClick = onUpdateClicked

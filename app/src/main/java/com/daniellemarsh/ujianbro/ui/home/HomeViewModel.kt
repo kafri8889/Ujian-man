@@ -1,5 +1,8 @@
 package com.daniellemarsh.ujianbro.ui.home
 
+import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.asFlow
 import androidx.lifecycle.viewModelScope
@@ -9,7 +12,10 @@ import com.daniellemarsh.ujianbro.common.DownloadItem
 import com.daniellemarsh.ujianbro.common.DownloadManager
 import com.daniellemarsh.ujianbro.common.networking.ConnectivityManager
 import com.daniellemarsh.ujianbro.data.Constant
+import com.daniellemarsh.ujianbro.data.datasource.remote.RemoteDatasource
+import com.daniellemarsh.ujianbro.extension.toast
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,7 +31,8 @@ class HomeViewModel @Inject constructor(
 //	@ApplicationContext private val ctx: Context,
 	private val alertManager: AlertManager,
 	private val downloadManager: DownloadManager,
-	private val connectivityManager: ConnectivityManager
+	private val remoteDatasource: RemoteDatasource,
+	private val connectivityManager: ConnectivityManager,
 ): ViewModel() {
 	
 	private var listener: HomeListener? = null
@@ -38,6 +45,9 @@ class HomeViewModel @Inject constructor(
 	
 	private val _latestAppVersion = MutableStateFlow(BuildConfig.VERSION_CODE)
 	val latestAppVersion: StateFlow<Int> = _latestAppVersion
+	
+	private val _latestAppUrl = MutableStateFlow("")
+	val latestAppUrl: StateFlow<String> = _latestAppUrl
 	
 	private val _reloadWebView = MutableStateFlow(false)
 	val reloadWebView: StateFlow<Boolean> = _reloadWebView
@@ -56,6 +66,57 @@ class HomeViewModel @Inject constructor(
 	
 	val currentDownload: StateFlow<DownloadItem>
 		get() = downloadManager.currentDownload
+	
+	private val handler = Handler(Looper.getMainLooper())
+	
+	private val getUrlRunnable = object : Runnable {
+		override fun run() {
+			remoteDatasource.getELearningUrl(
+				onSuccess = { url ->
+					viewModelScope.launch {
+						_requestedUrl.emit(url)
+						_reloadWebView.emit(true)
+					}
+				},
+				onFailure = {
+					handler.post(this)
+				}
+			)
+		}
+	}
+	
+	private val getLatestVersionCodeRunnable = object : Runnable {
+		override fun run() {
+			remoteDatasource.getLatestAppVersionCode(
+				onSuccess = { versionCode ->
+					viewModelScope.launch {
+						_latestAppVersion.emit(versionCode)
+						_isThereANewestVersion.emit(
+							versionCode > BuildConfig.VERSION_CODE
+						)
+					}
+				},
+				onFailure = {
+					handler.post(this)
+				}
+			)
+		}
+	}
+	
+	private val getLatestAppVersionRunnable = object : Runnable {
+		override fun run() {
+			remoteDatasource.getLatestAppVersion(
+				onSuccess = { appUrl ->
+					viewModelScope.launch {
+						_latestAppUrl.emit(appUrl)
+					}
+				},
+				onFailure = {
+					handler.post(this)
+				}
+			)
+		}
+	}
 	
 	init {
 		downloadManager.setListener(object : DownloadManager.DownloadListener {
@@ -81,40 +142,51 @@ class HomeViewModel @Inject constructor(
 			}
 		})
 		
-		viewModelScope.launch(Dispatchers.IO) {
+		handler.post(getUrlRunnable)
+		handler.post(getLatestAppVersionRunnable)
+		handler.post(getLatestVersionCodeRunnable)
+		
+		viewModelScope.launch {
 			connectivityManager.isNetworkAvailable.asFlow().collect { available ->
 				_isNetworkHaveInternet.emit(available)
-				
-				if (available) {
-					val reqUrl = try {
-						URL(Constant.E_LEARNING_URL).readText()
-					} catch (e: ConnectException) {
-						_effect.emit(
-							HomeEffect.NetworkException("Terjadi kesalahan pada internet")
-						); ""
-					} catch (e: Exception) {
-						_effect.emit(
-							HomeEffect.NetworkException(e.message ?: "Terjadi kesalahan")
-						); ""
-					}
-
-					_requestedUrl.emit(reqUrl)
-					_reloadWebView.emit(true)
-				}
 			}
 		}
 		
-		viewModelScope.launch(Dispatchers.IO) {
-//			val latestAppVer = 7
-			val latestAppVer = try {
-				URL(Constant.LATEST_APP_VERSION_CODE_URL).readText().toInt()
-			} catch (e: Exception) { BuildConfig.VERSION_CODE }
-			
-			_latestAppVersion.emit(latestAppVer)
-			_isThereANewestVersion.emit(
-				latestAppVer > BuildConfig.VERSION_CODE
-			)
-		}
+//		viewModelScope.launch(Dispatchers.IO) {
+//			connectivityManager.isNetworkAvailable.asFlow().collect { available ->
+//				_isNetworkHaveInternet.emit(available)
+//
+//				available.toast(ctx)
+//				if (available) {
+//					val reqUrl = try {
+//						URL(Constant.E_LEARNING_URL).readText()
+//					} catch (e: ConnectException) {
+//						_effect.emit(
+//							HomeEffect.NetworkException("Terjadi kesalahan pada internet")
+//						); ""
+//					} catch (e: Exception) {
+//						_effect.emit(
+//							HomeEffect.NetworkException(e.message ?: "Terjadi kesalahan")
+//						); ""
+//					}.also { it.toast(ctx) }
+//
+//					_requestedUrl.emit(reqUrl)
+//					_reloadWebView.emit(true)
+//				}
+//			}
+//		}
+		
+//		viewModelScope.launch(Dispatchers.IO) {
+////			val latestAppVer = 7
+//			val latestAppVer = try {
+//				URL(Constant.LATEST_APP_VERSION_CODE_URL).readText().toInt()
+//			} catch (e: Exception) { BuildConfig.VERSION_CODE }
+//
+//			_latestAppVersion.emit(latestAppVer)
+//			_isThereANewestVersion.emit(
+//				latestAppVer > BuildConfig.VERSION_CODE
+//			)
+//		}
 	}
 	
 	fun setListener(mListener: HomeListener) {
@@ -128,8 +200,10 @@ class HomeViewModel @Inject constructor(
 	}
 	
 	fun setReloadWebView(reload: Boolean) {
-		viewModelScope.launch(Dispatchers.IO) {
-			_reloadWebView.emit(reload)
+		viewModelScope.launch {
+			if (reload and requestedUrl.value.isBlank()) {
+				handler.post(getUrlRunnable)
+			} else _reloadWebView.emit(reload)
 		}
 	}
 	
@@ -143,19 +217,17 @@ class HomeViewModel @Inject constructor(
 		viewModelScope.launch(Dispatchers.IO) {
 			_isDownloading.emit(true)
 			
-//			val latestAppUrl = "https://github.com/kafri8889/kafri8889.github.io/raw/main/data/ujianbro/app-release.apk"
-			val latestAppUrl = try {
-				URL(Constant.LATEST_VERSION_APP_URL).readText()
-			} catch (e: Exception) { "" }
-//			latestAppUrl.toast(ctx)
-			if (latestAppUrl.isNotBlank()) {
+			if (latestAppUrl.value.isNotBlank()) {
 				withContext(Dispatchers.Main) {
 					downloadManager.download(
-						url = latestAppUrl,
-						fileName = latestAppUrl.substringAfterLast('/')
+						url = latestAppUrl.value,
+						fileName = latestAppUrl.value.substringAfterLast('/')
 					)
 				}
-			} else _isDownloading.emit(false)
+			} else {
+				_effect.emit(HomeEffect.BlankLatestAppVersionUrl)
+				_isDownloading.emit(false)
+			}
 		}
 	}
 	

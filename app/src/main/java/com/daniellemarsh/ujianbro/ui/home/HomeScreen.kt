@@ -10,10 +10,9 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.view.View
 import android.view.ViewGroup
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
+import android.webkit.*
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
@@ -48,6 +47,7 @@ import com.daniellemarsh.ujianbro.extension.toast
 import com.daniellemarsh.ujianbro.uicomponent.*
 import com.google.accompanist.permissions.*
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import timber.log.Timber
 
 @OptIn(ExperimentalPermissionsApi::class)
 @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
@@ -101,7 +101,10 @@ fun HomeScreen(
 					effect.message.toast(context)
 				}
 				is HomeEffect.DownloadLatestAppComplete -> {
-				
+					"Download complete".toast(context)
+				}
+				is HomeEffect.BlankLatestAppVersionUrl -> {
+					"Url not found".toast(context)
 				}
 				else -> {}
 			}
@@ -267,7 +270,7 @@ fun HomeScreen(
 				viewModel.setReloadWebView(reload)
 			},
 			onWebViewLoadedChange = { isLoaded ->
-				isWebViewLoaded = isLoaded
+				isWebViewLoaded = isLoaded and requestedUrl.isNotBlank()
 			},
 			modifier = Modifier
 				.fillMaxSize()
@@ -332,9 +335,14 @@ fun WebScreen(
 								}
 								
 								override fun onPageFinished(view: WebView?, url: String?) {
+									Timber.i("prog: ${view?.progress}")
 									if (view?.progress == 100) {
 										onWebViewLoadedChange(true)
 									}
+								}
+								
+								override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+									view?.loadUrl("file:///android_asset/weberror.html")
 								}
 							}
 							
@@ -348,9 +356,16 @@ fun WebScreen(
 								builtInZoomControls = true
 								displayZoomControls = false
 								loadWithOverviewMode = true
-								
+//								allowContentAccess = true
+//								domStorageEnabled = true
+//								javaScriptCanOpenWindowsAutomatically = true
+//								loadWithOverviewMode = true
+//
+//								setLayerType(View.LAYER_TYPE_SOFTWARE, null)
 								setSupportZoom(true)
 							}
+							
+//							loadUrl("https://pekanulanganhar.man1bogor.sch.id/")
 							
 							loadUrl(requestedUrl)
 						}
