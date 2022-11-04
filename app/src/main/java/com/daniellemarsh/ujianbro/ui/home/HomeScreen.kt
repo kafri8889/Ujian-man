@@ -356,12 +356,12 @@ fun WebScreen(
 								builtInZoomControls = true
 								displayZoomControls = false
 								loadWithOverviewMode = true
-//								allowContentAccess = true
-//								domStorageEnabled = true
+								allowContentAccess = true
+								domStorageEnabled = true
 //								javaScriptCanOpenWindowsAutomatically = true
-//								loadWithOverviewMode = true
+								loadWithOverviewMode = true
 //
-//								setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+								setLayerType(View.LAYER_TYPE_SOFTWARE, null)
 								setSupportZoom(true)
 							}
 							

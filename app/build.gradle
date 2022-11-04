@@ -5,6 +5,7 @@ plugins {
     id 'kotlin-kapt'
     id 'kotlin-parcelize'
     id 'com.google.gms.google-services'
+    id 'com.google.firebase.crashlytics'
 }
 
 android {
@@ -15,8 +16,8 @@ android {
         applicationId "com.daniellemarsh.ujianbro"
         minSdk 21
         targetSdk 33
-        versionCode 6
-        versionName "1.5.0"
+        versionCode 7
+        versionName "1.5.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -46,6 +47,9 @@ android {
                 freeCompilerArgs += [
                         "-Xjvm-default=all",
                 ]
+            }
+            firebaseCrashlytics {
+                mappingFileUploadEnabled true
             }
         }
     }
@@ -92,6 +96,8 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.5.1'
     implementation 'androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1'
     implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
+    implementation 'com.google.firebase:firebase-crashlytics-ktx:18.3.0'
+    implementation 'com.google.firebase:firebase-analytics-ktx:21.2.0'
     kapt 'androidx.lifecycle:lifecycle-common-java8:2.5.1'
 
     // Firebase
