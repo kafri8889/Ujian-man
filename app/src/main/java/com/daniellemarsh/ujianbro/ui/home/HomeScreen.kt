@@ -106,6 +106,9 @@ fun HomeScreen(
 				is HomeEffect.BlankLatestAppVersionUrl -> {
 					"Url not found".toast(context)
 				}
+				is HomeEffect.NullUrl -> {
+					"Url Null!".toast(context)
+				}
 				else -> {}
 			}
 			
