@@ -74,7 +74,11 @@ class HomeViewModel @Inject constructor(
 			remoteDatasource.getELearningUrl(
 				onSuccess = { url ->
 					viewModelScope.launch {
-						_requestedUrl.emit(url)
+						if (url == null) {
+							_effect.emit(HomeEffect.NullUrl)
+						}
+						
+						_requestedUrl.emit(url ?: "")
 						_reloadWebView.emit(true)
 					}
 				},
@@ -90,7 +94,11 @@ class HomeViewModel @Inject constructor(
 			remoteDatasource.getLatestAppVersionCode(
 				onSuccess = { versionCode ->
 					viewModelScope.launch {
-						_latestAppVersion.emit(versionCode)
+						if (versionCode == null) {
+							_effect.emit(HomeEffect.NullUrl)
+						}
+						
+						_latestAppVersion.emit(versionCode ?: BuildConfig.VERSION_CODE)
 						_isThereANewestVersion.emit(
 							versionCode > BuildConfig.VERSION_CODE
 						)
@@ -108,7 +116,11 @@ class HomeViewModel @Inject constructor(
 			remoteDatasource.getLatestAppVersion(
 				onSuccess = { appUrl ->
 					viewModelScope.launch {
-						_latestAppUrl.emit(appUrl)
+						if (appUrl == null) {
+							_effect.emit(HomeEffect.NullUrl)
+						}
+						
+						_latestAppUrl.emit(appUrl ?: "")
 					}
 				},
 				onFailure = {
