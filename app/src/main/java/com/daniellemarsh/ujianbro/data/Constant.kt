@@ -2,6 +2,9 @@ package com.daniellemarsh.ujianbro.data
 
 object Constant {
 	
+	/**
+	 * Link e lerning nya
+	 */
 	const val E_LEARNING_URL = "https://kafri8889.github.io/data/ujianbro/exambro_web_url.txt"
 	
 	/**
