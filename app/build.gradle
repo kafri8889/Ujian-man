@@ -114,6 +114,7 @@ dependencies {
     kapt 'com.google.dagger:hilt-android-compiler:2.39.1'
 
     // Networking
+    implementation 'com.android.volley:volley:1.2.1'
     implementation 'com.squareup.retrofit2:converter-gson:2.9.0'
     implementation 'com.squareup.retrofit2:retrofit:2.9.0'
 
