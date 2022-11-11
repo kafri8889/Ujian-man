@@ -7,8 +7,12 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.net.Uri
-import android.os.*
-import android.view.*
+import android.os.Build
+import android.os.Bundle
+import android.os.IBinder
+import android.view.View
+import android.view.WindowInsets
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -20,14 +24,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.lifecycle.lifecycleScope
 import com.daniellemarsh.ujianbro.common.AlertManager
 import com.daniellemarsh.ujianbro.common.networking.ConnectivityManager
-import com.daniellemarsh.ujianbro.data.Constant
-import com.daniellemarsh.ujianbro.extension.toast
 import com.daniellemarsh.ujianbro.receiver.BluetoothReceiver
 import com.daniellemarsh.ujianbro.service.FGService
 import com.daniellemarsh.ujianbro.theme.UjianBroTheme
@@ -37,8 +38,6 @@ import com.daniellemarsh.ujianbro.ui.home.HomeViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.*
 import timber.log.Timber
-import java.net.URL
-import java.util.concurrent.Executors
 import javax.inject.Inject
 
 
@@ -64,6 +63,21 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		if (BuildConfig.DEBUG) Timber.plant(Timber.DebugTree())
+		
+		WindowCompat.setDecorFitsSystemWindows(window, false)
+		window.setFlags(
+			WindowManager.LayoutParams.FLAG_SECURE,
+			WindowManager.LayoutParams.FLAG_SECURE
+		)
+		
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+			window.setHideOverlayWindows(true)
+		}
+		
+		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+			setRecentsScreenshotEnabled(false)
+		}
+		
 		setContent {
 			UjianBroTheme(
 				darkTheme = false
@@ -94,16 +108,6 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		)
 		
 		registerReceiver(bluetoothReceiver, bluetoothIntentFilter)
-		
-		WindowCompat.setDecorFitsSystemWindows(window, false)
-		window.setFlags(
-			WindowManager.LayoutParams.FLAG_SECURE,
-			WindowManager.LayoutParams.FLAG_SECURE
-		)
-		
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-			window.setHideOverlayWindows(true)
-		}
 		
 		connectivityManager.registerConnectionObserver(this)
 		
