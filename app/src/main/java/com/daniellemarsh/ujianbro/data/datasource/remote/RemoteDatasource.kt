@@ -1,20 +1,10 @@
 package com.daniellemarsh.ujianbro.data.datasource.remote
 
 import android.content.Context
-import android.os.Build
-import android.widget.Toast
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
 import com.daniellemarsh.ujianbro.BuildConfig
 import com.daniellemarsh.ujianbro.data.Constant
-import com.daniellemarsh.ujianbro.data.model.GithubELearingResponse
-import com.daniellemarsh.ujianbro.data.model.GithubLatestAppVersionResponse
-import com.daniellemarsh.ujianbro.data.model.GithubLatestVersionCodeResponse
-import com.daniellemarsh.ujianbro.extension.toast
-import org.json.JSONObject
-import retrofit2.Call
-import retrofit2.Callback
-import retrofit2.Response
 import javax.inject.Inject
 
 class RemoteDatasource @Inject constructor(
@@ -129,6 +119,27 @@ class RemoteDatasource @Inject constructor(
 //				onFailure()
 //			}
 //		})
+	}
+	
+	fun getExitPassword(
+		onSuccess: (pass: Int) -> Unit,
+		onFailure: () -> Unit
+	) {
+		val req = JsonObjectRequest(
+			Constant.EXIT_PASSWORD_URL,
+			{
+				onSuccess(
+					try {
+						it.get("exit_password").toString().toInt()
+					} catch (e: Exception) { 310804 }
+				)
+			}
+		) {
+			onFailure()
+		}
+		
+		queue.add(req)
+		queue.start()
 	}
 	
 }

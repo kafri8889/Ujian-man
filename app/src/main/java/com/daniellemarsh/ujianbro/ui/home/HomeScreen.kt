@@ -2,10 +2,7 @@ package com.daniellemarsh.ujianbro.ui.home
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.bluetooth.BluetoothManager
-import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
@@ -39,17 +36,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.zIndex
-import androidx.core.app.ActivityCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import com.daniellemarsh.ujianbro.BuildConfig
 import com.daniellemarsh.ujianbro.R
 import com.daniellemarsh.ujianbro.extension.toast
 import com.daniellemarsh.ujianbro.uicomponent.*
-import com.google.accompanist.permissions.*
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.isGranted
+import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import timber.log.Timber
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
 @SuppressLint("SetJavaScriptEnabled", "ClickableViewAccessibility")
 @Composable
 fun HomeScreen(
@@ -73,6 +72,7 @@ fun HomeScreen(
 	)
 	
 	val requestedUrl by viewModel.requestedUrl.collectAsState()
+	val exitPassword by viewModel.exitPassword.collectAsState()
 	val reloadWebView by viewModel.reloadWebView.collectAsState()
 	val isDownloading by viewModel.isDownloading.collectAsState()
 	val currentDownload by viewModel.currentDownload.collectAsState()
@@ -82,6 +82,7 @@ fun HomeScreen(
 	val isThereANewestVersion by viewModel.isThereANewestVersion.collectAsState()
 	
 	var isWebViewLoaded by remember { mutableStateOf(false) }
+	var isExitDialogShowing by remember { mutableStateOf(false) }
 	var isPermissionShouldShowRationale by remember { mutableStateOf(false) }
 	var isPostNotifPermissionShouldShowRationale by remember { mutableStateOf(true) }
 	
@@ -116,6 +117,13 @@ fun HomeScreen(
 		}
 	}
 	
+	LaunchedEffect(isBluetoothEnabled) {
+		when {
+			isBluetoothEnabled -> viewModel.disallowAlert()
+			else -> viewModel.allowAlert()
+		}
+	}
+	
 	BackHandler {
 		viewModel.alert()
 	}
@@ -124,6 +132,70 @@ fun HomeScreen(
 		modifier = Modifier
 			.fillMaxSize()
 	) {
+		AnimatedVisibility(
+			visible = isExitDialogShowing,
+			enter = fadeIn(
+				animationSpec = tween(250)
+			),
+			exit = fadeOut(
+				animationSpec = tween(250)
+			),
+			modifier = Modifier
+				.zIndex(104f)
+		) {
+			ExitDialog(
+				correctPassword = exitPassword,
+				onDismissRequest = {
+					isExitDialogShowing	= false
+				},
+				onExit = {
+					viewModel.exit()
+				}
+			)
+//			AlertDialog(
+//				onDismissRequest = {
+//					isExitDialogShowing	= false
+//				},
+//				title = {
+//					Text("Keluar")
+//				},
+//				text = {
+//					OutlinedTextField(
+//						value = exitPasswordUserInput,
+//						keyboardOptions = KeyboardOptions(
+//							keyboardType = KeyboardType.Number
+//						),
+//						onValueChange = { s ->
+//							exitPasswordUserInput = s
+//						},
+//						label = {
+//							Text("Masukkan password")
+//						},
+//						modifier = Modifier
+//							.fillMaxWidth()
+//					)
+//				},
+//				dismissButton = {
+//					TextButton(
+//						onClick = {
+//							isExitDialogShowing = false
+//						}
+//					) {
+//						Text("Batalkan")
+//					}
+//				},
+//				confirmButton = {
+//					Button(
+//						onClick = {
+//							viewModel.exit()
+//						}
+//					) {
+//						Text("Keluar")
+//					}
+//				}
+//			)
+		}
+		
 		AnimatedVisibility(
 			visible = isBluetoothEnabled,
 			enter = fadeIn(
@@ -135,7 +207,16 @@ fun HomeScreen(
 			modifier = Modifier
 				.zIndex(103f)
 		) {
-			BluetoothEnabledDialog()
+			AlertDialog(
+				onDismissRequest = {},
+				title = {
+					Text("Bluetooth")
+				},
+				text = {
+					Text("Bluetooth tidak boleh dinyalakan, matikan bluetooth untuk menghilangkan dialog ini!")
+				},
+				confirmButton = {}
+			)
 		}
 		
 		AnimatedVisibility(
@@ -149,6 +230,47 @@ fun HomeScreen(
 			modifier = Modifier
 				.zIndex(102f)
 		) {
+//			AlertDialog(
+//				onDismissRequest = {
+//					isPostNotifPermissionShouldShowRationale = false
+//				},
+//				title = {
+//					Text("Request Permission")
+//				},
+//				text = {
+//					Text(
+//						text = "Aplikasi ini membutuhkan izin \"POST_NOTIFICATIONS\" untuk menampilkan notifikasi " +
+//								"saat ada update-an terbaru"
+//					)
+//				},
+//				confirmButton = {
+//					Button(
+//						onClick = {
+//							isPostNotifPermissionShouldShowRationale = false
+//
+//							viewModel.disallowAlert()
+//
+//							val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+//								data = Uri.fromParts("package", BuildConfig.APPLICATION_ID, null)
+//								flags = Intent.FLAG_ACTIVITY_NEW_TASK
+//							}
+//
+//							context.startActivity(intent)
+//						}
+//					) {
+//						Text("Buka pengaturan")
+//					}
+//				},
+//				dismissButton = {
+//					TextButton(
+//						onClick = {
+//							isPostNotifPermissionShouldShowRationale = false
+//						}
+//					) {
+//						Text("Tutup")
+//					}
+//				}
+//			)
 			RequestPostNotifPermissionDialog(
 				onDismissRequest = {
 					isPostNotifPermissionShouldShowRationale = false
@@ -179,6 +301,47 @@ fun HomeScreen(
 			modifier = Modifier
 				.zIndex(101f)
 		) {
+//			AlertDialog(
+//				onDismissRequest = {
+//					isPermissionShouldShowRationale = false
+//				},
+//				title = {
+//					Text("Request Permission")
+//				},
+//				text = {
+//					Text(
+//						text = "Aplikasi ini membutuhkan izin \"WRITE_EXTERNAL_STORAGE\" untuk menyimpan " +
+//								"update-an terbaru yang sudah di download"
+//					)
+//				},
+//				confirmButton = {
+//					Button(
+//						onClick = {
+//							isPermissionShouldShowRationale = false
+//
+//							viewModel.disallowAlert()
+//
+//							val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+//								data = Uri.fromParts("package", BuildConfig.APPLICATION_ID, null)
+//								flags = Intent.FLAG_ACTIVITY_NEW_TASK
+//							}
+//
+//							context.startActivity(intent)
+//						}
+//					) {
+//						Text("Buka pengaturan")
+//					}
+//				},
+//				dismissButton = {
+//					TextButton(
+//						onClick = {
+//							isPostNotifPermissionShouldShowRationale = false
+//						}
+//					) {
+//						Text("Tutup")
+//					}
+//				}
+//			)
 			RequestPermissionDialog(
 				onDismissRequest = {
 					isPermissionShouldShowRationale = false
@@ -240,7 +403,7 @@ fun HomeScreen(
 			LoadingDialog(
 				isPlaying = !isWebViewLoaded or !isNetworkHaveInternet,
 				onExitClicked = {
-					viewModel.exit()
+					isExitDialogShowing = true
 				}
 			)
 		}
@@ -258,7 +421,7 @@ fun HomeScreen(
 				viewModel.setReloadWebView(true)
 			},
 			onExit = {
-				viewModel.exit()
+				isExitDialogShowing = true
 			},
 			modifier = Modifier
 				.padding(16.dp)

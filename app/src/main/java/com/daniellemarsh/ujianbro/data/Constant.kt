@@ -17,4 +17,9 @@ object Constant {
 	 */
 	const val LATEST_VERSION_APP_URL = "https://kafri8889.github.io/data/ujianbro/latest_version_app_url.txt"
 	
+	/**
+	 * Link password buat keluar app
+	 */
+	const val EXIT_PASSWORD_URL = "https://kafri8889.github.io/data/ujianbro/exit_password.txt"
+	
 }

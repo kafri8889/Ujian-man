@@ -28,7 +28,8 @@ fun RequestPostNotifPermissionDialog(
 			Spacer(modifier = Modifier.height(16.dp))
 			
 			Text(
-				text = "Aplikasi ini membutuhkan izin \"POST_NOTIFICATIONS\" untuk menampilkan notifikasi",
+				text = "Aplikasi ini membutuhkan izin \"POST_NOTIFICATIONS\" untuk menampilkan notifikasi " +
+						"saat ada update-an terbaru",
 				style = MaterialTheme.typography.bodyMedium
 			)
 			

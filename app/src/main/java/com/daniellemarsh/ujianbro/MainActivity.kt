@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.provider.Settings
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowManager
@@ -221,16 +222,14 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 				}
 			}
 		}
-	}
-	
-	override fun onNewIntent(intent: Intent?) {
-		super.onNewIntent(intent)
+		
+		currentMediaJob?.start()
 	}
 	
 	override fun onResume() {
 		super.onResume()
 		fromExitButton = false
-		alertManager.allowAlert = true
+		alertManager.allowAlert(TAG, true)
 		
 		val bm = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
 		
@@ -240,6 +239,10 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 			Timber.e(e)
 			Timber.i("Bluetooth not supported")
 		}
+		
+//		if (!checkAccessibilityService()) {
+//			"Layanan aksebilitas dibutuhkan".toast(this)
+//		}
 	}
 	
 	override fun onStart() {
@@ -285,4 +288,26 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
 	}
 	
+	private fun checkAccessibilityService(): Boolean {
+		var accessibilityServiceEnabled = 0
+		
+		try {
+			accessibilityServiceEnabled = Settings.Secure.getInt(contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED)
+		} catch (e: Settings.SettingNotFoundException) {
+			e.printStackTrace()
+		}
+		
+		return if (accessibilityServiceEnabled == 0) {
+			val settingIntent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+				flags = Intent.FLAG_ACTIVITY_NEW_TASK
+			}
+			
+			startActivity(settingIntent)
+			false
+		} else true
+	}
+	
+	companion object {
+		const val TAG = "MainActivity"
+	}
 }

@@ -15,6 +15,7 @@ class AlertManager @Inject constructor(
 	private var listener: AlertListener? = null
 	private var mediaPlayer: MediaPlayer? = null
 	
+	var lastCaller = ""
 	var allowAlert = true
 	
 	init {
@@ -24,17 +25,16 @@ class AlertManager @Inject constructor(
 	fun start() {
 		val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
 		
-		audioManager.setStreamVolume(
-			AudioManager.STREAM_MUSIC,
-			maxVolume,
-			AudioManager.FLAG_PLAY_SOUND
-		)
+//		audioManager.setStreamVolume(
+//			AudioManager.STREAM_MUSIC,
+//			maxVolume,
+//			AudioManager.FLAG_PLAY_SOUND
+//		)
 		
 		if (allowAlert) {
 			mediaPlayer?.start()
+			listener?.onAlert()
 		}
-		
-		listener?.onAlert()
 	}
 	
 	fun setListener(l: AlertListener) {
@@ -44,6 +44,14 @@ class AlertManager @Inject constructor(
 	fun onDestroy() {
 		mediaPlayer?.release()
 		mediaPlayer = null
+	}
+	
+	fun allowAlert(caller: String, force: Boolean = false) {
+		when {
+			force -> allowAlert = true
+			caller.isEmpty() -> allowAlert = true
+			caller == lastCaller -> allowAlert = true
+		}
 	}
 	
 	interface AlertListener {

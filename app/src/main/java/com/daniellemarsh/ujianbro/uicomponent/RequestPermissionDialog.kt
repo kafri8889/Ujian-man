@@ -1,8 +1,5 @@
 package com.daniellemarsh.ujianbro.uicomponent
 
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -11,7 +8,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.daniellemarsh.ujianbro.BuildConfig
 
 @Composable
 fun RequestPermissionDialog(
@@ -25,14 +21,15 @@ fun RequestPermissionDialog(
 				.fillMaxWidth()
 		) {
 			Text(
-				text = "Permission",
+				text = "Request permission",
 				style = MaterialTheme.typography.headlineSmall
 			)
 			
 			Spacer(modifier = Modifier.height(16.dp))
 			
 			Text(
-				text = "Aplikasi ini membutuhkan izin \"WRITE_EXTERNAL_STORAGE\" untuk menyimpan update-an aplikasi terbaru",
+				text = "Aplikasi ini membutuhkan izin \"WRITE_EXTERNAL_STORAGE\" untuk menyimpan " +
+						"update-an terbaru yang sudah di download",
 				style = MaterialTheme.typography.bodyMedium
 			)
 			

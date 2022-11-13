@@ -1,6 +1,5 @@
 package com.daniellemarsh.ujianbro.ui.home
 
-import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import androidx.lifecycle.ViewModel
@@ -11,19 +10,14 @@ import com.daniellemarsh.ujianbro.common.AlertManager
 import com.daniellemarsh.ujianbro.common.DownloadItem
 import com.daniellemarsh.ujianbro.common.DownloadManager
 import com.daniellemarsh.ujianbro.common.networking.ConnectivityManager
-import com.daniellemarsh.ujianbro.data.Constant
 import com.daniellemarsh.ujianbro.data.datasource.remote.RemoteDatasource
-import com.daniellemarsh.ujianbro.extension.toast
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
-import java.net.ConnectException
-import java.net.URL
 import javax.inject.Inject
 
 @HiltViewModel
@@ -48,6 +42,9 @@ class HomeViewModel @Inject constructor(
 	
 	private val _latestAppUrl = MutableStateFlow("")
 	val latestAppUrl: StateFlow<String> = _latestAppUrl
+	
+	private val _exitPassword = MutableStateFlow(310804)
+	val exitPassword: StateFlow<Int> = _exitPassword
 	
 	private val _reloadWebView = MutableStateFlow(false)
 	val reloadWebView: StateFlow<Boolean> = _reloadWebView
@@ -130,6 +127,25 @@ class HomeViewModel @Inject constructor(
 		}
 	}
 	
+	private val getExitPasswordRunnable = object : Runnable {
+		override fun run() {
+			remoteDatasource.getExitPassword(
+				onSuccess = { password ->
+					viewModelScope.launch {
+						if (password == null) {
+							_effect.emit(HomeEffect.NullUrl)
+						}
+						
+						_exitPassword.emit(password ?: 310804)
+					}
+				},
+				onFailure = {
+					handler.post(this)
+				}
+			)
+		}
+	}
+	
 	init {
 		downloadManager.setListener(object : DownloadManager.DownloadListener {
 			override fun onError(id: Int, message: String) {
@@ -157,6 +173,7 @@ class HomeViewModel @Inject constructor(
 		handler.post(getUrlRunnable)
 		handler.post(getLatestAppVersionRunnable)
 		handler.post(getLatestVersionCodeRunnable)
+		handler.post(getExitPasswordRunnable)
 		
 		viewModelScope.launch {
 			connectivityManager.isNetworkAvailable.asFlow().collect { available ->
@@ -256,7 +273,7 @@ class HomeViewModel @Inject constructor(
 	}
 	
 	fun allowAlert() {
-		alertManager.allowAlert = true
+		alertManager.allowAlert(TAG, true)
 	}
 	
 	fun disallowAlert() {
@@ -269,6 +286,10 @@ class HomeViewModel @Inject constructor(
 	
 	fun alert() {
 		alertManager.start()
+	}
+	
+	companion object {
+		const val TAG = "HomeViewModel"
 	}
 	
 }
