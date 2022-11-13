@@ -7,7 +7,6 @@ import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
-import android.view.View
 import android.view.ViewGroup
 import android.webkit.*
 import androidx.activity.compose.BackHandler
@@ -21,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.DesktopWindows
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -31,6 +31,7 @@ import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -83,6 +84,7 @@ fun HomeScreen(
 	val isThereANewestVersion by viewModel.isThereANewestVersion.collectAsState()
 	
 	var isWebViewLoaded by remember { mutableStateOf(false) }
+	var isDesktopModeEnable by remember { mutableStateOf(false) }
 	var isExitDialogShowing by remember { mutableStateOf(false) }
 	var isPermissionShouldShowRationale by remember { mutableStateOf(false) }
 	var isPostNotifPermissionShouldShowRationale by remember { mutableStateOf(true) }
@@ -420,6 +422,10 @@ fun HomeScreen(
 		)
 		
 		ActionButtons(
+			desktopModeEnable = isDesktopModeEnable,
+			onDesktopMode = { enable ->
+				isDesktopModeEnable = enable
+			},
 			onRefresh = {
 				viewModel.setReloadWebView(true)
 			},
@@ -437,6 +443,7 @@ fun HomeScreen(
 		WebScreen(
 			requestedUrl = requestedUrl,
 			reloadWebView = reloadWebView,
+			isDesktopModeEnable = isDesktopModeEnable,
 			isNetworkAvailable = isNetworkHaveInternet,
 			onReloadWebView = { reload ->
 				viewModel.setReloadWebView(reload)
@@ -457,11 +464,14 @@ fun HomeScreen(
 fun WebScreen(
 	requestedUrl: String,
 	reloadWebView: Boolean,
+	isDesktopModeEnable: Boolean,
 	isNetworkAvailable: Boolean,
 	modifier: Modifier = Modifier,
 	onReloadWebView: (reload: Boolean) -> Unit,
 	onWebViewLoadedChange: (isLoaded: Boolean) -> Unit
 ) {
+	
+	val config = LocalConfiguration.current
 	
 	Column(
 		modifier = modifier
@@ -487,6 +497,10 @@ fun WebScreen(
 							modifier = Modifier
 								.weight(1f)
 								.fillMaxHeight()
+//								.horizontalScroll(rememberScrollState())
+//								.verticalScroll(rememberScrollState())
+								.widthIn(max = config.smallestScreenWidthDp.dp * 4)
+								.heightIn(max = config.screenHeightDp.dp * 2f)
 						) {
 							Box(
 								modifier = Modifier
@@ -502,8 +516,8 @@ fun WebScreen(
 								factory = { context ->
 									WebView(context).apply {
 										layoutParams = ViewGroup.LayoutParams(
-											ViewGroup.LayoutParams.MATCH_PARENT,
-											ViewGroup.LayoutParams.MATCH_PARENT
+											ViewGroup.LayoutParams.WRAP_CONTENT,
+											ViewGroup.LayoutParams.WRAP_CONTENT
 										)
 										
 										webViewClient = object : WebViewClient() {
@@ -527,27 +541,29 @@ fun WebScreen(
 										
 										settings.apply {
 											userAgentString =
-												"Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"
-											useWideViewPort = true
+												"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36"
+											useWideViewPort = false
 											javaScriptEnabled = true
 											builtInZoomControls = true
 											displayZoomControls = false
 											loadWithOverviewMode = true
 											allowContentAccess = true
 											domStorageEnabled = true
-//								javaScriptCanOpenWindowsAutomatically = true
-											loadWithOverviewMode = true
 //
-											setLayerType(View.LAYER_TYPE_SOFTWARE, null)
 											setSupportZoom(true)
 										}
-
-//							loadUrl("https://pekanulanganhar.man1bogor.sch.id/")
+										
+										setInitialScale(0)
 										
 										loadUrl(requestedUrl)
 									}
 								},
 								update = {
+									it.setInitialScale(
+										if (isDesktopModeEnable) 100
+										else 0
+									)
+									
 									if (reloadWebView) {
 										it.loadUrl(requestedUrl)
 										onReloadWebView(false)
@@ -622,7 +638,9 @@ fun WebScreen(
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 private fun ActionButtons(
+	desktopModeEnable: Boolean,
 	modifier: Modifier = Modifier,
+	onDesktopMode: (enable: Boolean) -> Unit,
 	onRefresh: () -> Unit,
 	onExit: () -> Unit
 ) {
@@ -632,6 +650,7 @@ private fun ActionButtons(
 	var isFabExpanded by remember { mutableStateOf(false) }
 	var buttonExitVisible by remember { mutableStateOf(true) }
 	var buttonRefreshVisible by remember { mutableStateOf(true) }
+	var buttonDesktopModeVisible by remember { mutableStateOf(true) }
 	
 	val iconRotationDegree by animateFloatAsState(
 		targetValue = if (isFabExpanded) 360f else 0f,
@@ -642,6 +661,47 @@ private fun ActionButtons(
 		horizontalAlignment = Alignment.End,
 		modifier = modifier
 	) {
+		Row {
+			AnimatedVisibility(
+				visible = buttonDesktopModeVisible and isFabExpanded,
+				enter = scaleIn(tween(200)),
+				exit = scaleOut(tween(200)),
+				modifier = Modifier
+					.padding(end = 16.dp)
+			) {
+				Button(
+					shape = MaterialTheme.shapes.small,
+					onClick = {
+						buttonDesktopModeVisible = false
+					}
+				) {
+					Text("Desktop Mode")
+				}
+			}
+			
+			AnimatedVisibility(
+				visible = isFabExpanded,
+				enter = scaleIn(tween(200)),
+				exit = scaleOut(tween(200))
+			) {
+				FloatingActionButton(
+					onClick = {
+						onDesktopMode(!desktopModeEnable)
+						isFabExpanded = false
+					}
+				) {
+					Icon(
+						imageVector = Icons.Rounded.DesktopWindows,
+						contentDescription = null,
+						modifier = Modifier
+							.size(24.dp)
+					)
+				}
+			}
+		}
+		
+		Spacer(modifier = Modifier.height(16.dp))
+		
 		Row {
 			AnimatedVisibility(
 				visible = buttonRefreshVisible and isFabExpanded,
@@ -656,7 +716,7 @@ private fun ActionButtons(
 						buttonRefreshVisible = false
 					}
 				) {
-					Text("REFRESH")
+					Text("Refresh")
 				}
 			}
 			
@@ -697,7 +757,7 @@ private fun ActionButtons(
 						buttonExitVisible = false
 					}
 				) {
-					Text("EXIT")
+					Text("Exit")
 				}
 			}
 			
