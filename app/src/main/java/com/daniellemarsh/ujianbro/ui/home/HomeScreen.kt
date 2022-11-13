@@ -30,6 +30,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -390,7 +391,7 @@ fun HomeScreen(
 		}
 		
 		AnimatedVisibility(
-			visible = !isWebViewLoaded or !isNetworkHaveInternet,
+			visible = !isWebViewLoaded and isNetworkHaveInternet,
 			enter = fadeIn(
 				animationSpec = tween(250)
 			),
@@ -401,9 +402,11 @@ fun HomeScreen(
 				.zIndex(100f)
 		) {
 			LoadingDialog(
-				isPlaying = !isWebViewLoaded or !isNetworkHaveInternet,
+				isPlaying = !isWebViewLoaded and isNetworkHaveInternet,
 				onExitClicked = {
-					isExitDialogShowing = true
+					if (isNetworkHaveInternet) {
+						isExitDialogShowing = true
+					} else viewModel.exit()
 				}
 			)
 		}
@@ -421,7 +424,9 @@ fun HomeScreen(
 				viewModel.setReloadWebView(true)
 			},
 			onExit = {
-				isExitDialogShowing = true
+				if (isNetworkHaveInternet) {
+					isExitDialogShowing = true
+				} else viewModel.exit()
 			},
 			modifier = Modifier
 				.padding(16.dp)
@@ -432,6 +437,7 @@ fun HomeScreen(
 		WebScreen(
 			requestedUrl = requestedUrl,
 			reloadWebView = reloadWebView,
+			isNetworkAvailable = isNetworkHaveInternet,
 			onReloadWebView = { reload ->
 				viewModel.setReloadWebView(reload)
 			},
@@ -445,11 +451,13 @@ fun HomeScreen(
 
 }
 
+@OptIn(ExperimentalAnimationApi::class)
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun WebScreen(
 	requestedUrl: String,
 	reloadWebView: Boolean,
+	isNetworkAvailable: Boolean,
 	modifier: Modifier = Modifier,
 	onReloadWebView: (reload: Boolean) -> Unit,
 	onWebViewLoadedChange: (isLoaded: Boolean) -> Unit
@@ -458,142 +466,156 @@ fun WebScreen(
 	Column(
 		modifier = modifier
 	) {
-		Row(
-			modifier = Modifier
-				.weight(1f)
-				.fillMaxWidth()
-		) {
-			Box(
-				modifier = Modifier
-					.padding(4.dp)
-					.width(4.dp)
-					.fillMaxHeight()
-					.clip(CircleShape)
-					.background(Color(0xFF8fd0f8))
-			)
-			
-			Column(
-				modifier = Modifier
-					.weight(1f)
-					.fillMaxHeight()
-			) {
-				Box(
-					modifier = Modifier
-						.padding(4.dp)
-						.height(4.dp)
-						.fillMaxWidth()
-						.clip(CircleShape)
-						.background(Color.White)
-						.shadow(0.5.dp)
-				)
-				
-				AndroidView(
-					factory = { context ->
-						WebView(context).apply {
-							layoutParams = ViewGroup.LayoutParams(
-								ViewGroup.LayoutParams.MATCH_PARENT,
-								ViewGroup.LayoutParams.MATCH_PARENT
+		AnimatedContent(targetState = isNetworkAvailable) { available ->
+			if (available) {
+				Column {
+					Row(
+						modifier = Modifier
+							.weight(1f)
+							.fillMaxWidth()
+					) {
+						Box(
+							modifier = Modifier
+								.padding(4.dp)
+								.width(4.dp)
+								.fillMaxHeight()
+								.clip(CircleShape)
+								.background(Color(0xFF8fd0f8))
+						)
+						
+						Column(
+							modifier = Modifier
+								.weight(1f)
+								.fillMaxHeight()
+						) {
+							Box(
+								modifier = Modifier
+									.padding(4.dp)
+									.height(4.dp)
+									.fillMaxWidth()
+									.clip(CircleShape)
+									.background(Color.White)
+									.shadow(0.5.dp)
 							)
 							
-							webViewClient = object : WebViewClient() {
-								override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-									onWebViewLoadedChange(false)
-								}
-								
-								override fun onPageFinished(view: WebView?, url: String?) {
-									Timber.i("prog: ${view?.progress}")
-									if (view?.progress == 100) {
-										onWebViewLoadedChange(true)
-									}
-								}
-								
-								override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-									view?.loadUrl("file:///android_asset/weberror.html")
-								}
-							}
-							
-							webChromeClient = object : WebChromeClient() {}
-							
-							settings.apply {
-								userAgentString =
-									"Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"
-								useWideViewPort = true
-								javaScriptEnabled = true
-								builtInZoomControls = true
-								displayZoomControls = false
-								loadWithOverviewMode = true
-								allowContentAccess = true
-								domStorageEnabled = true
+							AndroidView(
+								factory = { context ->
+									WebView(context).apply {
+										layoutParams = ViewGroup.LayoutParams(
+											ViewGroup.LayoutParams.MATCH_PARENT,
+											ViewGroup.LayoutParams.MATCH_PARENT
+										)
+										
+										webViewClient = object : WebViewClient() {
+											override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+												onWebViewLoadedChange(false)
+											}
+											
+											override fun onPageFinished(view: WebView?, url: String?) {
+												Timber.i("prog: ${view?.progress}")
+												if (view?.progress == 100) {
+													onWebViewLoadedChange(true)
+												}
+											}
+											
+											override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
+												view?.loadUrl("file:///android_asset/weberror.html")
+											}
+										}
+										
+										webChromeClient = object : WebChromeClient() {}
+										
+										settings.apply {
+											userAgentString =
+												"Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36"
+											useWideViewPort = true
+											javaScriptEnabled = true
+											builtInZoomControls = true
+											displayZoomControls = false
+											loadWithOverviewMode = true
+											allowContentAccess = true
+											domStorageEnabled = true
 //								javaScriptCanOpenWindowsAutomatically = true
-								loadWithOverviewMode = true
+											loadWithOverviewMode = true
 //
-								setLayerType(View.LAYER_TYPE_SOFTWARE, null)
-								setSupportZoom(true)
-							}
-							
+											setLayerType(View.LAYER_TYPE_SOFTWARE, null)
+											setSupportZoom(true)
+										}
+
 //							loadUrl("https://pekanulanganhar.man1bogor.sch.id/")
+										
+										loadUrl(requestedUrl)
+									}
+								},
+								update = {
+									if (reloadWebView) {
+										it.loadUrl(requestedUrl)
+										onReloadWebView(false)
+									}
+								},
+								modifier = Modifier
+									.fillMaxWidth()
+									.weight(1f)
+							)
 							
-							loadUrl(requestedUrl)
+							Row(
+								verticalAlignment = Alignment.CenterVertically,
+								horizontalArrangement = Arrangement.Center,
+								modifier = Modifier
+									.fillMaxWidth()
+							) {
+								Image(
+									painter = painterResource(id = R.drawable.ic_launcher),
+									contentDescription = null,
+									modifier = Modifier
+										.size(24.dp)
+								)
+								
+								Text(
+									text = "UJIAN MAN 1 BOGOR",
+									style = MaterialTheme.typography.titleSmall.copy(
+										fontWeight = FontWeight.Bold
+									)
+								)
+								
+								Image(
+									painter = painterResource(id = R.drawable.ic_launcher),
+									contentDescription = null,
+									modifier = Modifier
+										.size(24.dp)
+								)
+							}
 						}
-					},
-					update = {
-						if (reloadWebView) {
-							it.loadUrl(requestedUrl)
-							onReloadWebView(false)
-						}
-					},
-					modifier = Modifier
-						.fillMaxWidth()
-						.weight(1f)
-				)
-				
-				Row(
-					verticalAlignment = Alignment.CenterVertically,
-					horizontalArrangement = Arrangement.Center,
-					modifier = Modifier
-						.fillMaxWidth()
-				) {
-					Image(
-						painter = painterResource(id = R.drawable.ic_launcher),
-						contentDescription = null,
-						modifier = Modifier
-							.size(24.dp)
-					)
-					
-					Text(
-						text = "UJIAN MAN 1 BOGOR",
-						style = MaterialTheme.typography.titleSmall.copy(
-							fontWeight = FontWeight.Bold
+						
+						Box(
+							modifier = Modifier
+								.padding(4.dp)
+								.width(4.dp)
+								.fillMaxHeight()
+								.clip(CircleShape)
+								.background(Color(0xFF8fd0f8))
 						)
-					)
+					}
 					
-					Image(
-						painter = painterResource(id = R.drawable.ic_launcher),
-						contentDescription = null,
+					Box(
 						modifier = Modifier
-							.size(24.dp)
+							.padding(4.dp)
+							.height(4.dp)
+							.fillMaxWidth()
+							.clip(CircleShape)
+							.background(Color(0xFF8fd0f8))
 					)
 				}
+			} else {
+				Image(
+					painter = painterResource(id = R.drawable.no_internet_ui),
+					contentDescription = null,
+					contentScale = ContentScale.FillBounds,
+					modifier = Modifier
+						.fillMaxSize()
+				)
 			}
-			
-			Box(
-				modifier = Modifier
-					.padding(4.dp)
-					.width(4.dp)
-					.fillMaxHeight()
-					.clip(CircleShape)
-					.background(Color(0xFF8fd0f8))
-			)
 		}
-		
-		Box(
-			modifier = Modifier
-				.padding(4.dp)
-				.height(4.dp)
-				.fillMaxWidth()
-				.clip(CircleShape)
-				.background(Color(0xFF8fd0f8))
-		)
 	}
 }
 

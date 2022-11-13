@@ -16,8 +16,8 @@ android {
         applicationId "com.daniellemarsh.ujianbro"
         minSdk 21
         targetSdk 33
-        versionCode 7
-        versionName "1.5.1"
+        versionCode 8
+        versionName "1.5.2"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

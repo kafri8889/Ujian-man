@@ -57,6 +57,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 	private var currentMediaJob: Job? = null
 	
 	private var isActivityRunningInForeground = false
+	private var isNetworkAvailable = true
 	private var fromExitButton = false
 	
 	@RequiresApi(Build.VERSION_CODES.M)
@@ -78,6 +79,8 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
 			setRecentsScreenshotEnabled(false)
 		}
+		
+		observeNetwork()
 		
 		setContent {
 			UjianBroTheme(
@@ -117,8 +120,13 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 				val mInsets = v.onApplyWindowInsets(insets)
 				
 				if (mInsets.isVisible(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())) {
-					hideSystemBars()
-					alertManager.start()
+					if (isNetworkAvailable) {
+						hideSystemBars()
+						alertManager.start()
+					} else {
+						alertManager.allowAlert = false
+						showSystemBars()
+					}
 				}
 				
 				return@setOnApplyWindowInsetsListener mInsets
@@ -126,8 +134,13 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		} else {
 			window.decorView.setOnSystemUiVisibilityChangeListener { visibility ->
 				if (visibility and View.SYSTEM_UI_FLAG_FULLSCREEN == 0) {
-					hideSystemBars()
-					alertManager.start()
+					if (isNetworkAvailable) {
+						hideSystemBars()
+						alertManager.start()
+					} else {
+						alertManager.allowAlert = false
+						showSystemBars()
+					}
 				}
 			}
 		}
@@ -145,6 +158,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		
 		homeViewModel.setListener(object : HomeListener {
 			override fun exit() {
+				alertManager.start()
 				fromExitButton = true
 				finishAndRemoveTask()
 			}
@@ -229,7 +243,8 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 	override fun onResume() {
 		super.onResume()
 		fromExitButton = false
-		alertManager.allowAlert(TAG, true)
+		
+		if (isNetworkAvailable) alertManager.allowAlert(TAG, true)
 		
 		val bm = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
 		
@@ -280,12 +295,36 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		fgService = null
 	}
 	
+	private fun observeNetwork() {
+		lifecycleScope.launch {
+			homeViewModel.isNetworkHaveInternet.collect { available ->
+				isNetworkAvailable = available
+				
+				if (available) {
+					homeViewModel.setReloadWebView(true)
+					alertManager.allowAlert(TAG, force = true)
+				}
+				else {
+					alertManager.allowAlert = false
+				}
+			}
+		}
+	}
+	
 	private fun hideSystemBars() {
 		val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
 		// Configure the behavior of the hidden system bars
 //		windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 		// Hide both the status bar and the navigation bar
 		windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+	}
+	
+	private fun showSystemBars() {
+		val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+		// Configure the behavior of the hidden system bars
+//		windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+		// Show both the status bar and the navigation bar
+		windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
 	}
 	
 	private fun checkAccessibilityService(): Boolean {

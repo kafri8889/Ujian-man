@@ -14,7 +14,7 @@ import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 class NetworkConnectivity(
-	context: Context
+	private val context: Context
 ): LiveData<Boolean>() {
 	
 	private lateinit var networkCallback: ConnectivityManager.NetworkCallback
