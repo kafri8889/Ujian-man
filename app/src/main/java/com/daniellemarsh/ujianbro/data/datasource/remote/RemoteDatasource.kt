@@ -1,10 +1,15 @@
 package com.daniellemarsh.ujianbro.data.datasource.remote
 
 import android.content.Context
+import com.android.volley.DefaultRetryPolicy
+import com.android.volley.Response
+import com.android.volley.TimeoutError
 import com.android.volley.toolbox.JsonObjectRequest
 import com.android.volley.toolbox.Volley
 import com.daniellemarsh.ujianbro.BuildConfig
 import com.daniellemarsh.ujianbro.data.Constant
+import org.json.JSONObject
+import timber.log.Timber
 import javax.inject.Inject
 
 class RemoteDatasource @Inject constructor(
@@ -140,6 +145,42 @@ class RemoteDatasource @Inject constructor(
 		
 		queue.add(req)
 		queue.start()
+	}
+	
+	fun getTimeoutResponse(
+		onSuccess: (response: Int?) -> Unit,
+		onTimeoutReset: () -> Unit
+	) {
+		val successListener = Response.Listener<JSONObject> {
+			onSuccess(
+				try {
+					it.get("response").toString().toInt()
+				} catch (e: Exception) { null }
+			)
+		}
+		
+		val errorListener = Response.ErrorListener {
+//			it.message.toast(context)
+			onTimeoutReset()
+			if (it.networkResponse == null) {
+				if (it.javaClass == TimeoutError::class.java) {
+					onSuccess(null)
+				}
+			}
+		}
+		
+		val req = JsonObjectRequest(
+			Constant.TO_CHECK_TIMEOUT_URL,
+			successListener,
+			errorListener
+		).apply {
+			setShouldCache(false)
+			retryPolicy = DefaultRetryPolicy(3800, 0, 0f)
+		}
+		
+		queue.cancelAll { it.url == req.url }
+		queue.add(req)
+		Timber.i("runnig timeout add to qyuyu")
 	}
 	
 }

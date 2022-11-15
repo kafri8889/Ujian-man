@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -48,6 +49,9 @@ import com.google.accompanist.permissions.isGranted
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
@@ -57,6 +61,7 @@ fun HomeScreen(
 	viewModel: HomeViewModel
 ) {
 	
+	val view = LocalView.current
 	val context = LocalContext.current
 
 	val scope = rememberCoroutineScope()
@@ -73,6 +78,7 @@ fun HomeScreen(
 		)
 	)
 	
+	val isTimeout by viewModel.isTimeout.collectAsState()
 	val requestedUrl by viewModel.requestedUrl.collectAsState()
 	val exitPassword by viewModel.exitPassword.collectAsState()
 	val reloadWebView by viewModel.reloadWebView.collectAsState()
@@ -83,7 +89,22 @@ fun HomeScreen(
 	val isNetworkHaveInternet by viewModel.isNetworkHaveInternet.collectAsState()
 	val isThereANewestVersion by viewModel.isThereANewestVersion.collectAsState()
 	
+	val snackbarTimeout = remember(context, view) {
+		Snackbar.make(
+			view,
+			"Waktu koneksi habis, periksa internet anda!, ada kuota?, atau lag?",
+			Snackbar.LENGTH_LONG
+		).apply {
+			setAction(
+				"Tutup"
+			) {
+				dismiss()
+			}
+		}
+	}
+	
 	var isWebViewLoaded by remember { mutableStateOf(false) }
+	var isErrorPageShowed by remember { mutableStateOf(false) }
 	var isDesktopModeEnable by remember { mutableStateOf(false) }
 	var isExitDialogShowing by remember { mutableStateOf(false) }
 	var isPermissionShouldShowRationale by remember { mutableStateOf(false) }
@@ -124,6 +145,22 @@ fun HomeScreen(
 		when {
 			isBluetoothEnabled -> viewModel.disallowAlert()
 			else -> viewModel.allowAlert()
+		}
+	}
+	
+	LaunchedEffect(isTimeout) {
+		Timber.i("runnig timot? $isTimeout")
+		if (isTimeout and !snackbarTimeout.isShown) {
+			snackbarTimeout.show()
+		}
+	}
+	
+	LaunchedEffect(isErrorPageShowed) {
+		withContext(Dispatchers.Main) {
+			if (isErrorPageShowed) {
+				viewModel.disallowAlert()
+				viewModel.disableSecurity()
+			} else viewModel.enableSecurity()
 		}
 	}
 	
@@ -393,7 +430,7 @@ fun HomeScreen(
 		}
 		
 		AnimatedVisibility(
-			visible = !isWebViewLoaded and isNetworkHaveInternet,
+			visible = !isWebViewLoaded and isNetworkHaveInternet and !isErrorPageShowed,
 			enter = fadeIn(
 				animationSpec = tween(250)
 			),
@@ -404,11 +441,14 @@ fun HomeScreen(
 				.zIndex(100f)
 		) {
 			LoadingDialog(
-				isPlaying = !isWebViewLoaded and isNetworkHaveInternet,
+				isPlaying = !isWebViewLoaded and isNetworkHaveInternet and !isErrorPageShowed,
 				onExitClicked = {
-					if (isNetworkHaveInternet) {
-						isExitDialogShowing = true
-					} else viewModel.exit()
+					when {
+						isTimeout -> viewModel.exit()
+						isErrorPageShowed -> viewModel.exit()
+						isNetworkHaveInternet -> isExitDialogShowing = true
+						else -> viewModel.exit()
+					}
 				}
 			)
 		}
@@ -430,9 +470,12 @@ fun HomeScreen(
 				viewModel.setReloadWebView(true)
 			},
 			onExit = {
-				if (isNetworkHaveInternet) {
-					isExitDialogShowing = true
-				} else viewModel.exit()
+				when {
+					isTimeout -> viewModel.exit()
+					isErrorPageShowed -> viewModel.exit()
+					isNetworkHaveInternet -> isExitDialogShowing = true
+					else -> viewModel.exit()
+				}
 			},
 			modifier = Modifier
 				.padding(16.dp)
@@ -451,6 +494,12 @@ fun HomeScreen(
 			onWebViewLoadedChange = { isLoaded ->
 				isWebViewLoaded = isLoaded and requestedUrl.isNotBlank()
 			},
+			onError = { timeout ->
+				viewModel.setTimeout(timeout)
+			},
+			onErrorPageShowed = { showed ->
+				isErrorPageShowed = showed
+			},
 			modifier = Modifier
 				.fillMaxSize()
 		)
@@ -467,16 +516,25 @@ fun WebScreen(
 	isDesktopModeEnable: Boolean,
 	isNetworkAvailable: Boolean,
 	modifier: Modifier = Modifier,
+	onError: (timeout: Boolean) -> Unit,
 	onReloadWebView: (reload: Boolean) -> Unit,
+	onErrorPageShowed: (show: Boolean) -> Unit,
 	onWebViewLoadedChange: (isLoaded: Boolean) -> Unit
 ) {
 	
 	val config = LocalConfiguration.current
+	val context = LocalContext.current
+	
+	var isWebViewError by remember { mutableStateOf(false) }
 	
 	Column(
 		modifier = modifier
 	) {
-		AnimatedContent(targetState = isNetworkAvailable) { available ->
+		AnimatedContent(targetState = isNetworkAvailable and !isWebViewError) { available ->
+			LaunchedEffect(available) {
+				onErrorPageShowed(!available)
+			}
+			
 			if (available) {
 				Column {
 					Row(
@@ -499,8 +557,8 @@ fun WebScreen(
 								.fillMaxHeight()
 //								.horizontalScroll(rememberScrollState())
 //								.verticalScroll(rememberScrollState())
-								.widthIn(max = config.smallestScreenWidthDp.dp * 4)
-								.heightIn(max = config.screenHeightDp.dp * 2f)
+//								.widthIn(max = config.smallestScreenWidthDp.dp * 4)
+//								.heightIn(max = config.screenHeightDp.dp * 2f)
 						) {
 							Box(
 								modifier = Modifier
@@ -522,19 +580,76 @@ fun WebScreen(
 										
 										webViewClient = object : WebViewClient() {
 											override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+												if (url?.contains("file://") != true) {
+													isWebViewError = false
+													Timber.i("urel bukan urel error")
+												}
+												Timber.i("urel: $url")
 												onWebViewLoadedChange(false)
 											}
 											
 											override fun onPageFinished(view: WebView?, url: String?) {
 												Timber.i("prog: ${view?.progress}")
+												
+												if (isWebViewError && url?.contains("file://") != true) {
+													view?.loadUrl("file:///android_asset/weberror.html")
+													Timber.i("urel set ke: file:///android_asset/weberror.html")
+												}
+												
+												if (url?.contains("file://") == true) {
+													view?.stopLoading()
+													view?.loadUrl(requestedUrl)
+												}
+												
 												if (view?.progress == 100) {
 													onWebViewLoadedChange(true)
+													onError(false)
 												}
 											}
 											
 											override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {
-												view?.loadUrl("file:///android_asset/weberror.html")
+												if (!isWebViewError) {
+													try {
+														view?.stopLoading()
+													} catch (e: Exception) {}
+													
+													try {
+														view?.loadUrl("about:blank")
+													} catch (e: Exception) {}
+													
+													view?.loadUrl("file:///android_asset/weberror.html")
+													isWebViewError = true
+													onError(true)
+												}
 											}
+											
+//											override fun onReceivedHttpError(view: WebView?, request: WebResourceRequest?, errorResponse: WebResourceResponse?) {
+//												try {
+//													view?.stopLoading()
+//												} catch (e: Exception) {}
+//
+//												try {
+//													view?.loadUrl("about:blank")
+//												} catch (e: Exception) {}
+//
+//												view?.loadUrl("file:///android_asset/weberror.html")
+//												isWebViewError = true
+//												onError(true)
+//											}
+//
+//											override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: SslError?) {
+//												try {
+//													view?.stopLoading()
+//												} catch (e: Exception) {}
+//
+//												try {
+//													view?.loadUrl("about:blank")
+//												} catch (e: Exception) {}
+//
+//												view?.loadUrl("file:///android_asset/weberror.html")
+//												isWebViewError = true
+//												onError(true)
+//											}
 										}
 										
 										webChromeClient = object : WebChromeClient() {}
@@ -565,13 +680,17 @@ fun WebScreen(
 									)
 									
 									if (reloadWebView) {
+										it.stopLoading()
+										it.loadUrl("about:blank")
 										it.loadUrl(requestedUrl)
+										Timber.i("rilot $requestedUrl")
 										onReloadWebView(false)
 									}
 								},
 								modifier = Modifier
 									.fillMaxWidth()
-									.weight(1f)
+									.fillMaxHeight()
+//									.weight(1f)
 							)
 							
 							Row(

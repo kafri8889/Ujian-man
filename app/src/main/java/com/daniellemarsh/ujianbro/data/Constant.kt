@@ -22,4 +22,9 @@ object Constant {
 	 */
 	const val EXIT_PASSWORD_URL = "https://kafri8889.github.io/data/ujianbro/exit_password.txt"
 	
+	/**
+	 * Link buat cek user ada kuota apa nggak pake `timeout`
+	 */
+	const val TO_CHECK_TIMEOUT_URL = "https://kafri8889.github.io/data/ujianbro/to_check_timeout.txt"
+	
 }

@@ -8,6 +8,10 @@ interface HomeListener {
 	
 	fun alert()
 	
+	fun enableSecurity()
+	
+	fun disableSecurity()
+	
 	fun installUpdate(uri: Uri)
 	
 }

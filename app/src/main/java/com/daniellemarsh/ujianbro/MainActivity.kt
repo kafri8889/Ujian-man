@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 	private var isActivityRunningInForeground = false
 	private var isNetworkAvailable = true
 	private var fromExitButton = false
+	private var disabledSecurity = false
 	
 	@RequiresApi(Build.VERSION_CODES.M)
 	@OptIn(ExperimentalFoundationApi::class)
@@ -120,7 +121,8 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 				val mInsets = v.onApplyWindowInsets(insets)
 				
 				if (mInsets.isVisible(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())) {
-					if (isNetworkAvailable) {
+					if (isNetworkAvailable and !disabledSecurity) {
+						alertManager.allowAlert(TAG, force = true)
 						hideSystemBars()
 						alertManager.start()
 					} else {
@@ -134,7 +136,8 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		} else {
 			window.decorView.setOnSystemUiVisibilityChangeListener { visibility ->
 				if (visibility and View.SYSTEM_UI_FLAG_FULLSCREEN == 0) {
-					if (isNetworkAvailable) {
+					if (isNetworkAvailable and !disabledSecurity) {
+						alertManager.allowAlert(TAG, force = true)
 						hideSystemBars()
 						alertManager.start()
 					} else {
@@ -165,6 +168,18 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 			
 			override fun alert() {
 				alertManager.start()
+			}
+			
+			override fun enableSecurity() {
+				disabledSecurity = false
+				alertManager.allowAlert(TAG, force = true)
+				hideSystemBars()
+			}
+			
+			override fun disableSecurity() {
+				disabledSecurity = true
+				alertManager.allowAlert = false
+				showSystemBars()
 			}
 			
 			override fun installUpdate(uri: Uri) {
@@ -244,7 +259,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		super.onResume()
 		fromExitButton = false
 		
-		if (isNetworkAvailable) alertManager.allowAlert(TAG, true)
+		if (isNetworkAvailable and !disabledSecurity) alertManager.allowAlert(TAG, true)
 		
 		val bm = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
 		
@@ -302,7 +317,9 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 				
 				if (available) {
 					homeViewModel.setReloadWebView(true)
-					alertManager.allowAlert(TAG, force = true)
+					if (!disabledSecurity) {
+						alertManager.allowAlert(TAG, force = true)
+					}
 				}
 				else {
 					alertManager.allowAlert = false

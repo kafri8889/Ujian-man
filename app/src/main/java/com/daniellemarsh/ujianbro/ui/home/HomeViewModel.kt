@@ -1,5 +1,6 @@
 package com.daniellemarsh.ujianbro.ui.home
 
+import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import androidx.lifecycle.ViewModel
@@ -11,18 +12,18 @@ import com.daniellemarsh.ujianbro.common.DownloadItem
 import com.daniellemarsh.ujianbro.common.DownloadManager
 import com.daniellemarsh.ujianbro.common.networking.ConnectivityManager
 import com.daniellemarsh.ujianbro.data.datasource.remote.RemoteDatasource
+import com.github.h0tk3y.kotlinFun.selfReference
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 import javax.inject.Inject
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-//	@ApplicationContext private val ctx: Context,
+	@ApplicationContext private val ctx: Context,
 	private val alertManager: AlertManager,
 	private val downloadManager: DownloadManager,
 	private val remoteDatasource: RemoteDatasource,
@@ -60,6 +61,9 @@ class HomeViewModel @Inject constructor(
 	
 	private val _isBluetoothEnabled = MutableStateFlow(false)
 	val isBluetoothEnabled: StateFlow<Boolean> = _isBluetoothEnabled
+	
+	private val _isTimeout = MutableStateFlow(false)
+	val isTimeout: StateFlow<Boolean> = _isTimeout
 	
 	val currentDownload: StateFlow<DownloadItem>
 		get() = downloadManager.currentDownload
@@ -146,6 +150,29 @@ class HomeViewModel @Inject constructor(
 		}
 	}
 	
+	private val getTimeoutResponseRunnable: Runnable = selfReference {
+		Runnable {
+			Timber.i("runnig pos")
+			remoteDatasource.getTimeoutResponse(
+				onSuccess = { response ->
+					Timber.i("runnig sukkes?: $response")
+					viewModelScope.launch(Dispatchers.IO) {
+						_isTimeout.emit(false)
+						Timber.i("runnig respon bifor -> ${isTimeout.value}")
+						delay(500)
+						_isTimeout.emit(response == null)
+						delay(1000)
+						withContext(Dispatchers.Main) {
+							handler.post(self)
+						}
+						Timber.i("runnig respon after -> ${isTimeout.value}")
+					}
+				},
+				onTimeoutReset = {}
+			)
+		}
+	}
+	
 	init {
 		downloadManager.setListener(object : DownloadManager.DownloadListener {
 			override fun onError(id: Int, message: String) {
@@ -170,6 +197,7 @@ class HomeViewModel @Inject constructor(
 			}
 		})
 		
+		handler.post(getTimeoutResponseRunnable)
 		handler.post(getUrlRunnable)
 		handler.post(getLatestAppVersionRunnable)
 		handler.post(getLatestVersionCodeRunnable)
@@ -222,9 +250,9 @@ class HomeViewModel @Inject constructor(
 		this.listener = mListener
 	}
 	
-	fun setRequestedUrl(s: String) {
+	fun setTimeout(timeout: Boolean) {
 		viewModelScope.launch {
-			_requestedUrl.emit(s)
+			_isTimeout.emit(timeout)
 		}
 	}
 	
@@ -278,6 +306,14 @@ class HomeViewModel @Inject constructor(
 	
 	fun disallowAlert() {
 		alertManager.allowAlert = false
+	}
+	
+	fun enableSecurity() {
+		listener?.enableSecurity()
+	}
+	
+	fun disableSecurity() {
+		listener?.disableSecurity()
 	}
 	
 	fun exit() {

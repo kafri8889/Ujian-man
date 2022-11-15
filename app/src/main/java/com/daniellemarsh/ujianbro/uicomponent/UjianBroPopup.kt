@@ -28,7 +28,7 @@ fun UjianBroPopup(
 	)
 	
 	val scrimColor by animateColorAsState(
-		targetValue = Color.Black.copy(alpha = 0.4f),
+		targetValue = Color.Black.copy(alpha = 0.6f),
 		animationSpec = tween(400)
 	)
 	
