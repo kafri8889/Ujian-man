@@ -7,9 +7,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
 import android.net.Uri
-import android.os.Build
-import android.os.Bundle
-import android.os.IBinder
+import android.os.*
 import android.provider.Settings
 import android.view.View
 import android.view.WindowInsets
@@ -36,8 +34,10 @@ import com.daniellemarsh.ujianbro.theme.UjianBroTheme
 import com.daniellemarsh.ujianbro.ui.home.HomeListener
 import com.daniellemarsh.ujianbro.ui.home.HomeScreen
 import com.daniellemarsh.ujianbro.ui.home.HomeViewModel
+import com.github.h0tk3y.kotlinFun.selfReference
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Runnable
+import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
 
@@ -52,9 +52,21 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 	
 	private val homeViewModel: HomeViewModel by viewModels()
 	
+	private val alertHandler = Handler(Looper.getMainLooper())
+	
+	private val alertRunnable = selfReference {
+		Runnable {
+			if (!hasWindowFocus()) {
+				alertManager.start()
+			}
+			
+			alertHandler.postDelayed(self, 1000)
+		}
+	}
+	
 	private var fgService: FGService? = null
 	
-	private var currentMediaJob: Job? = null
+//	private var currentMediaJob: Job? = null
 	
 	private var isActivityRunningInForeground = false
 	private var isNetworkAvailable = true
@@ -204,6 +216,8 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 			}
 		})
 		
+		alertHandler.post(alertRunnable)
+		
 //		val serviceIntent = Intent(this, FGService::class.java)
 //
 //		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -231,7 +245,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		
 		// Focus gain? cancel jobnya
 		if (hasFocus) {
-			currentMediaJob?.cancel()
+//			currentMediaJob?.cancel()
 		} else {
 			if (!fromExitButton) {
 				startActivity(
@@ -242,17 +256,17 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 			}
 		}
 		
-		currentMediaJob = lifecycleScope.launch {
-			// Focus loss?, bunyiin terus
-			while (!hasFocus) {
-				delay(900)
-				withContext(Dispatchers.Main) {
-					alertManager.start()
-				}
-			}
-		}
-		
-		currentMediaJob?.start()
+//		currentMediaJob = lifecycleScope.launch {
+//			// Focus loss?, bunyiin terus
+//			while (!hasFocus) {
+//				delay(900)
+//				withContext(Dispatchers.Main) {
+//					alertManager.start()
+//				}
+//			}
+//		}
+//
+//		currentMediaJob?.start()
 	}
 	
 	override fun onResume() {
