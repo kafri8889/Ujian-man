@@ -424,7 +424,10 @@ fun HomeScreen(
 					}
 				},
 				onDismissRequest = {
-					viewModel.setIsThereANewestVersion(false)
+//					viewModel.setIsThereANewestVersion(false)
+				},
+				onExit = {
+					viewModel.exit()
 				}
 			)
 		}

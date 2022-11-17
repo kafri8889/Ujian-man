@@ -60,7 +60,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 				alertManager.start()
 			}
 			
-			alertHandler.postDelayed(self, 1000)
+			alertHandler.postDelayed(self, 1400)
 		}
 	}
 	
@@ -274,6 +274,10 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		fromExitButton = false
 		
 		if (isNetworkAvailable and !disabledSecurity) alertManager.allowAlert(TAG, true)
+		
+		if (homeViewModel.latestAppVersion.value > BuildConfig.VERSION_CODE) {
+			homeViewModel.disableSecurity()
+		}
 		
 		val bm = getSystemService(BLUETOOTH_SERVICE) as BluetoothManager
 		

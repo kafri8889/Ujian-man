@@ -1,14 +1,21 @@
 package com.daniellemarsh.ujianbro.uicomponent
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun ExitDialog(
 	correctPassword: Int,
@@ -17,6 +24,7 @@ fun ExitDialog(
 ) {
 	
 	var exitPasswordUserInput by remember { mutableStateOf("") }
+	var isError by remember { mutableStateOf(false) }
 	
 	UjianBroPopup(onDismissRequest = onDismissRequest) {
 		Column(
@@ -28,14 +36,37 @@ fun ExitDialog(
 				style = MaterialTheme.typography.headlineSmall
 			)
 			
-			Spacer(modifier = Modifier.height(16.dp))
+			Spacer(modifier = Modifier.height(8.dp))
+			
+			AnimatedVisibility(
+				visible = isError,
+				enter = scaleIn(
+					animationSpec = tween(250)
+				),
+				exit = scaleOut(
+					animationSpec = tween(250)
+				),
+				modifier = Modifier
+					.align(Alignment.CenterHorizontally)
+			) {
+				Text(
+					text = if (exitPasswordUserInput.isBlank()) "Masukkan password" else "Password salah",
+					style = MaterialTheme.typography.bodyLarge.copy(
+						color = Color(0xFFF47174)
+					)
+				)
+			}
+			
+			Spacer(modifier = Modifier.height(8.dp))
 			
 			OutlinedTextField(
 				value = exitPasswordUserInput,
+				isError = isError,
 				keyboardOptions = KeyboardOptions(
 					keyboardType = KeyboardType.Number
 				),
 				onValueChange = { s ->
+					isError = false
 					exitPasswordUserInput = s
 				},
 				label = {
@@ -64,8 +95,11 @@ fun ExitDialog(
 				Spacer(modifier = Modifier.width(8.dp))
 				
 				Button(
-					onClick = onExit,
-					enabled = correctPassword == (exitPasswordUserInput.toIntOrNull() ?: 0)
+					onClick = {
+						if ((exitPasswordUserInput.toIntOrNull() ?: -1) != correctPassword) {
+							isError = true
+						} else onExit()
+					}
 				) {
 					Text("Keluar")
 				}
