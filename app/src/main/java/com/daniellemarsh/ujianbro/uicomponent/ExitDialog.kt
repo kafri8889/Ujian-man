@@ -5,23 +5,33 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class,
+	ExperimentalComposeUiApi::class
+)
 @Composable
 fun ExitDialog(
-	correctPassword: Int,
+	correctPassword: String,
 	onDismissRequest: () -> Unit,
 	onExit: () -> Unit
 ) {
+	
+	val keyboardController = LocalSoftwareKeyboardController.current
 	
 	var exitPasswordUserInput by remember { mutableStateOf("") }
 	var isError by remember { mutableStateOf(false) }
@@ -30,6 +40,12 @@ fun ExitDialog(
 		Column(
 			modifier = Modifier
 				.fillMaxWidth()
+				.clickable(
+					interactionSource = MutableInteractionSource(),
+					indication = null,
+					onClick = {}
+				)
+				.imePadding()
 		) {
 			Text(
 				text = "Keluar",
@@ -63,7 +79,13 @@ fun ExitDialog(
 				value = exitPasswordUserInput,
 				isError = isError,
 				keyboardOptions = KeyboardOptions(
-					keyboardType = KeyboardType.Number
+					keyboardType = KeyboardType.Text,
+					imeAction = ImeAction.Done
+				),
+				keyboardActions = KeyboardActions(
+					onDone = {
+						keyboardController?.hide()
+					}
 				),
 				onValueChange = { s ->
 					isError = false
@@ -96,7 +118,7 @@ fun ExitDialog(
 				
 				Button(
 					onClick = {
-						if ((exitPasswordUserInput.toIntOrNull() ?: -1) != correctPassword) {
+						if (exitPasswordUserInput != correctPassword) {
 							isError = true
 						} else onExit()
 					}

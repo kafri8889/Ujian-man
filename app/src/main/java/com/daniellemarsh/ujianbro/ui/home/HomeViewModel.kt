@@ -44,10 +44,14 @@ class HomeViewModel @Inject constructor(
 	private val _latestAppUrl = MutableStateFlow("")
 	val latestAppUrl: StateFlow<String> = _latestAppUrl
 	
-	private val _exitPassword = MutableStateFlow(310804)
-	val exitPassword: StateFlow<Int> = _exitPassword
+	private val _reloadTag = MutableStateFlow(RT_FROM_USER)
+	val reloadTag: StateFlow<String> = _reloadTag
 	
-	private val _reloadWebView = MutableStateFlow(false)
+	private val _exitPassword = MutableStateFlow("310804")
+	val exitPassword: StateFlow<String> = _exitPassword
+	
+	private val _reloadWebView = MutableStateFlow(true)
+//	private val _reloadWebView = MutableStateFlow(false)
 	val reloadWebView: StateFlow<Boolean> = _reloadWebView
 	
 	private val _isDownloading = MutableStateFlow(false)
@@ -140,7 +144,7 @@ class HomeViewModel @Inject constructor(
 							_effect.emit(HomeEffect.NullUrl)
 						}
 						
-						_exitPassword.emit(password ?: 310804)
+						_exitPassword.emit(password ?: "310804")
 					}
 				},
 				onFailure = {
@@ -256,11 +260,21 @@ class HomeViewModel @Inject constructor(
 		}
 	}
 	
-	fun setReloadWebView(reload: Boolean) {
+	fun setReloadTag(tag: String) {
 		viewModelScope.launch {
-			if (reload and requestedUrl.value.isBlank()) {
-				handler.post(getUrlRunnable)
-			} else _reloadWebView.emit(reload)
+			_reloadTag.emit(tag)
+			Timber.i("rilot tag: $tag")
+		}
+	}
+	
+	fun setReloadWebView(reload: Boolean, tag: String) {
+		viewModelScope.launch {
+			_reloadTag.emit(tag)
+			if (tag in allowedReloadTag) {
+				if (reload and requestedUrl.value.isBlank()) {
+					handler.post(getUrlRunnable)
+				} else _reloadWebView.emit(reload)
+			}
 		}
 	}
 	
@@ -326,6 +340,14 @@ class HomeViewModel @Inject constructor(
 	
 	companion object {
 		const val TAG = "HomeViewModel"
+		
+		const val RT_LOST_FOCUS = "lost_focus"
+		const val RT_FROM_USER = "from_user"
+		
+		val allowedReloadTag = listOf(
+			RT_LOST_FOCUS,
+			RT_FROM_USER
+		)
 	}
 	
 }

@@ -9,7 +9,11 @@ import android.content.Intent
 import android.os.Build
 import androidx.annotation.RequiresApi
 import com.daniellemarsh.ujianbro.MainActivity
+import com.daniellemarsh.ujianbro.R
 
+/**
+ * Unused
+ */
 object NotificationUtils {
 	
 	private const val channelID = "fg_notification"
@@ -57,12 +61,14 @@ object NotificationUtils {
 	fun simpleNotification(context: Context, title: String, text: String): Notification {
 		return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
 			Notification.Builder(context, channelID)
+				.setSmallIcon(R.drawable.ic_launcher)
 				.setContentTitle(title)
 				.setContentText(text)
 				.setCategory(Notification.CATEGORY_STATUS)
 				.build()
 		} else {
 			Notification.Builder(context)
+				.setSmallIcon(R.drawable.ic_launcher)
 				.setContentTitle(title)
 				.setContentText(text)
 				.setCategory(Notification.CATEGORY_STATUS)

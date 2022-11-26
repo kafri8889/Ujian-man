@@ -60,7 +60,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 				alertManager.start()
 			}
 			
-			alertHandler.postDelayed(self, 1400)
+			alertHandler.postDelayed(self, 1000)
 		}
 	}
 	
@@ -135,10 +135,10 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 				if (mInsets.isVisible(WindowInsets.Type.statusBars() or WindowInsets.Type.navigationBars())) {
 					if (isNetworkAvailable and !disabledSecurity) {
 						alertManager.allowAlert(TAG, force = true)
-						hideSystemBars()
+//						hideSystemBars()
 						alertManager.start()
 					} else {
-						alertManager.allowAlert = false
+//						alertManager.allowAlert = false
 						showSystemBars()
 					}
 				}
@@ -150,10 +150,10 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 				if (visibility and View.SYSTEM_UI_FLAG_FULLSCREEN == 0) {
 					if (isNetworkAvailable and !disabledSecurity) {
 						alertManager.allowAlert(TAG, force = true)
-						hideSystemBars()
+//						hideSystemBars()
 						alertManager.start()
 					} else {
-						alertManager.allowAlert = false
+//						alertManager.allowAlert = false
 						showSystemBars()
 					}
 				}
@@ -212,11 +212,11 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		
 		alertManager.setListener(object : AlertManager.AlertListener {
 			override fun onAlert() {
-				homeViewModel.setReloadWebView(true)
+				runOnUiThread {
+					homeViewModel.setReloadWebView(true, HomeViewModel.RT_LOST_FOCUS)
+				}
 			}
 		})
-		
-		alertHandler.post(alertRunnable)
 		
 //		val serviceIntent = Intent(this, FGService::class.java)
 //
@@ -273,7 +273,8 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		super.onResume()
 		fromExitButton = false
 		
-		if (isNetworkAvailable and !disabledSecurity) alertManager.allowAlert(TAG, true)
+//		if (isNetworkAvailable and !disabledSecurity) alertManager.allowAlert(TAG, true)
+		if (!disabledSecurity) alertManager.allowAlert(TAG, true)
 		
 		if (homeViewModel.latestAppVersion.value > BuildConfig.VERSION_CODE) {
 			homeViewModel.disableSecurity()
@@ -296,6 +297,11 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 	override fun onStart() {
 		super.onStart()
 		isActivityRunningInForeground = true
+		
+		alertManager.init()
+		
+		alertHandler.removeCallbacks(alertRunnable)
+		alertHandler.post(alertRunnable)
 	}
 	
 	override fun onStop() {
@@ -306,6 +312,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 	override fun onDestroy() {
 		super.onDestroy()
 		
+		alertHandler.removeCallbacks(alertRunnable)
 		alertManager.onDestroy()
 		connectivityManager.unregisterConnectionObserver(this)
 		
@@ -334,13 +341,12 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 				isNetworkAvailable = available
 				
 				if (available) {
-					homeViewModel.setReloadWebView(true)
 					if (!disabledSecurity) {
 						alertManager.allowAlert(TAG, force = true)
 					}
 				}
 				else {
-					alertManager.allowAlert = false
+//					alertManager.allowAlert = false
 				}
 			}
 		}
@@ -351,7 +357,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		// Configure the behavior of the hidden system bars
 //		windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 		// Hide both the status bar and the navigation bar
-		windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+		windowInsetsController.hide(WindowInsetsCompat.Type.statusBars())
 	}
 	
 	private fun showSystemBars() {
@@ -359,7 +365,7 @@ class MainActivity : ComponentActivity(), ServiceConnection {
 		// Configure the behavior of the hidden system bars
 //		windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 		// Show both the status bar and the navigation bar
-		windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
+		windowInsetsController.show(WindowInsetsCompat.Type.statusBars())
 	}
 	
 	private fun checkAccessibilityService(): Boolean {

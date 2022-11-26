@@ -127,7 +127,7 @@ class RemoteDatasource @Inject constructor(
 	}
 	
 	fun getExitPassword(
-		onSuccess: (pass: Int) -> Unit,
+		onSuccess: (pass: String) -> Unit,
 		onFailure: () -> Unit
 	) {
 		val req = JsonObjectRequest(
@@ -135,8 +135,8 @@ class RemoteDatasource @Inject constructor(
 			{
 				onSuccess(
 					try {
-						it.get("exit_password").toString().toInt()
-					} catch (e: Exception) { 310804 }
+						it.get("exit_password").toString()
+					} catch (e: Exception) { "310804" }
 				)
 			}
 		) {

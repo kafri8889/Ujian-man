@@ -50,8 +50,6 @@ import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.android.material.snackbar.Snackbar
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import timber.log.Timber
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalMaterial3Api::class)
@@ -79,6 +77,7 @@ fun HomeScreen(
 	)
 	
 	val isTimeout by viewModel.isTimeout.collectAsState()
+	val reloadTag by viewModel.reloadTag.collectAsState()
 	val requestedUrl by viewModel.requestedUrl.collectAsState()
 	val exitPassword by viewModel.exitPassword.collectAsState()
 	val reloadWebView by viewModel.reloadWebView.collectAsState()
@@ -112,7 +111,9 @@ fun HomeScreen(
 	
 	SideEffect {
 		systemUiController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_BARS_BY_SWIPE
-		systemUiController.isSystemBarsVisible = false
+//		systemUiController.isNavigationBarVisible = false
+		
+		systemUiController.setSystemBarsColor(Color.Transparent, true)
 		
 		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !postNotifPermissionState.status.isGranted) {
 			postNotifPermissionState.launchPermissionRequest()
@@ -155,14 +156,14 @@ fun HomeScreen(
 		}
 	}
 	
-	LaunchedEffect(isErrorPageShowed) {
-		withContext(Dispatchers.Main) {
-			if (isErrorPageShowed) {
-				viewModel.disallowAlert()
-				viewModel.disableSecurity()
-			} else viewModel.enableSecurity()
-		}
-	}
+//	LaunchedEffect(isErrorPageShowed) {
+//		withContext(Dispatchers.Main) {
+//			if (isErrorPageShowed) {
+//				viewModel.disallowAlert()
+//				viewModel.disableSecurity()
+//			} else viewModel.enableSecurity()
+//		}
+//	}
 	
 	BackHandler {
 		viewModel.alert()
@@ -432,29 +433,29 @@ fun HomeScreen(
 			)
 		}
 		
-		AnimatedVisibility(
-			visible = !isWebViewLoaded and isNetworkHaveInternet and !isErrorPageShowed,
-			enter = fadeIn(
-				animationSpec = tween(250)
-			),
-			exit = fadeOut(
-				animationSpec = tween(250)
-			),
-			modifier = Modifier
-				.zIndex(100f)
-		) {
-			LoadingDialog(
-				isPlaying = !isWebViewLoaded and isNetworkHaveInternet and !isErrorPageShowed,
-				onExitClicked = {
-					when {
-						isTimeout -> viewModel.exit()
-						isErrorPageShowed -> viewModel.exit()
-						isNetworkHaveInternet -> isExitDialogShowing = true
-						else -> viewModel.exit()
-					}
-				}
-			)
-		}
+//		AnimatedVisibility(
+//			visible = !isWebViewLoaded and isNetworkHaveInternet and !isErrorPageShowed,
+//			enter = fadeIn(
+//				animationSpec = tween(250)
+//			),
+//			exit = fadeOut(
+//				animationSpec = tween(250)
+//			),
+//			modifier = Modifier
+//				.zIndex(100f)
+//		) {
+//			LoadingDialog(
+//				isPlaying = !isWebViewLoaded and isNetworkHaveInternet and !isErrorPageShowed,
+//				onExitClicked = {
+//					when {
+//						isTimeout -> viewModel.exit()
+//						isErrorPageShowed -> viewModel.exit()
+//						isNetworkHaveInternet -> isExitDialogShowing = true
+//						else -> viewModel.exit()
+//					}
+//				}
+//			)
+//		}
 		
 		GestureDetector(
 			onAlert = {
@@ -470,7 +471,7 @@ fun HomeScreen(
 				isDesktopModeEnable = enable
 			},
 			onRefresh = {
-				viewModel.setReloadWebView(true)
+				viewModel.setReloadWebView(true, HomeViewModel.RT_FROM_USER)
 			},
 			onExit = {
 				when {
@@ -487,12 +488,13 @@ fun HomeScreen(
 		)
 		
 		WebScreen(
+			reloadTag = reloadTag,
 			requestedUrl = requestedUrl,
 			reloadWebView = reloadWebView,
 			isDesktopModeEnable = isDesktopModeEnable,
 			isNetworkAvailable = isNetworkHaveInternet,
 			onReloadWebView = { reload ->
-				viewModel.setReloadWebView(reload)
+				viewModel.setReloadWebView(reload, HomeViewModel.RT_FROM_USER)
 			},
 			onWebViewLoadedChange = { isLoaded ->
 				isWebViewLoaded = isLoaded and requestedUrl.isNotBlank()
@@ -502,6 +504,9 @@ fun HomeScreen(
 			},
 			onErrorPageShowed = { showed ->
 				isErrorPageShowed = showed
+			},
+			onResetReloadTag = {
+				viewModel.setReloadTag("")
 			},
 			modifier = Modifier
 				.fillMaxSize()
@@ -514,6 +519,7 @@ fun HomeScreen(
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
 fun WebScreen(
+	reloadTag: String,
 	requestedUrl: String,
 	reloadWebView: Boolean,
 	isDesktopModeEnable: Boolean,
@@ -521,6 +527,7 @@ fun WebScreen(
 	modifier: Modifier = Modifier,
 	onError: (timeout: Boolean) -> Unit,
 	onReloadWebView: (reload: Boolean) -> Unit,
+	onResetReloadTag: () -> Unit,
 	onErrorPageShowed: (show: Boolean) -> Unit,
 	onWebViewLoadedChange: (isLoaded: Boolean) -> Unit
 ) {
@@ -528,6 +535,7 @@ fun WebScreen(
 	val config = LocalConfiguration.current
 	val context = LocalContext.current
 	
+	var lastReloadTime by remember { mutableStateOf(0L) }
 	var isWebViewError by remember { mutableStateOf(false) }
 	
 	Column(
@@ -582,13 +590,58 @@ fun WebScreen(
 										)
 										
 										webViewClient = object : WebViewClient() {
+											override fun onLoadResource(
+												view: WebView?,
+												url: String?
+											) {
+												if (reloadTag !in HomeViewModel.allowedReloadTag || !reloadWebView) {
+//												if (reloadTag !in HomeViewModel.allowedReloadTag) {
+													view?.stopLoading()
+													return
+												}
+												
+//												val timeDiff = System.currentTimeMillis() - lastReloadTime
+//												val sec = timeDiff / 1000
+//												Timber.i("dingf: $lastReloadTime, diff: $sec")
+//												when {
+//													sec < 10 -> {
+//														view?.stopLoading()
+//													}
+//													else -> super.onLoadResource(view, url)
+//												}
+											}
+											
+//											override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+//												val timeDiff = System.currentTimeMillis() - lastReloadTime
+//												val sec = timeDiff / 1000
+//												"las: $lastReloadTime, diff: $sec".toast(context)
+//												return when {
+//													!url.equals(requestedUrl) -> false
+//													sec < 10000 -> true
+//													else -> false
+//												}
+//											}
+//
+//											override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+//												val timeDiff = System.currentTimeMillis() - lastReloadTime
+//												val sec = timeDiff / 1000
+//												"las: $lastReloadTime, diff: $sec".toast(context)
+//												return when {
+//													!url.equals(requestedUrl) -> false
+//													sec < 10000 -> true
+//													else -> false
+//												}
+//											}
+											
 											override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
 												if (url?.contains("file://") != true) {
 													isWebViewError = false
 													Timber.i("urel bukan urel error")
 												}
 												Timber.i("urel: $url")
-												onWebViewLoadedChange(false)
+//												if (url?.contains(lastUrl) != true) {
+													onWebViewLoadedChange(false)
+//												}
 											}
 											
 											override fun onPageFinished(view: WebView?, url: String?) {
@@ -605,8 +658,17 @@ fun WebScreen(
 												}
 												
 												if (view?.progress == 100) {
+													lastReloadTime = System.currentTimeMillis()
+//													lastUrl = url ?: ""
 													onWebViewLoadedChange(true)
 													onError(false)
+													onResetReloadTag()
+//													Handler(Looper.getMainLooper()).postDelayed(
+//														{
+//															view?.loadUrl(requestedUrl)
+//														},
+//														1000
+//													)
 												}
 											}
 											
@@ -910,12 +972,12 @@ private fun ActionButtons(
 					buttonRefreshVisible = true
 				}
 				
-				when {
-					systemUiController.isNavigationBarVisible or systemUiController.isStatusBarVisible -> {
-						systemUiController.isNavigationBarVisible = false
-						systemUiController.isStatusBarVisible = false
-					}
-				}
+//				when {
+//					systemUiController.isNavigationBarVisible or systemUiController.isStatusBarVisible -> {
+//						systemUiController.isNavigationBarVisible = false
+//						systemUiController.isStatusBarVisible = false
+//					}
+//				}
 			}
 		) {
 			Icon(
